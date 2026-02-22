@@ -4,29 +4,75 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>מפקד</title>
-
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#161b22">
+<meta name="theme-color" content="#131a0e">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="מפקד">
 <link rel="apple-touch-icon" href="icon-192.png">
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAASod1n3ztCXCytdpabT4VQ42-nflR_pc",
+    authDomain: "mefaked-a7fc8.firebaseapp.com",
+    projectId: "mefaked-a7fc8",
+    storageBucket: "mefaked-a7fc8.firebasestorage.app",
+    messagingSenderId: "185830133819",
+    appId: "1:185830133819:web:a08c3a4c35e2b7aed5cc1e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+
+  // Firebase save
+  window.fbSave = async function(key, data) {
+    try {
+      await setDoc(doc(db, 'mefaked', key), { data: JSON.stringify(data) });
+    } catch(e) { console.warn('fbSave error', e); }
+  };
+
+  // Firebase load
+  window.fbLoad = async function(key, fallback) {
+    try {
+      const snap = await getDoc(doc(db, 'mefaked', key));
+      if (snap.exists()) return JSON.parse(snap.data().data);
+    } catch(e) { console.warn('fbLoad error', e); }
+    return fallback;
+  };
+
+  // Real-time listener
+  window.fbListen = function(key, cb) {
+    return onSnapshot(doc(db, 'mefaked', key), snap => {
+      if (snap.exists()) {
+        try { cb(JSON.parse(snap.data().data)); } catch(e) {}
+      }
+    });
+  };
+
+  // Init app after Firebase is ready
+  window._fbReady = true;
+  if (window._initAppWhenReady) window._initAppWhenReady();
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;900&display=swap');
 
 :root {
-  --bg: #0d1117;
-  --surf: #161b22;
-  --surf2: #21262d;
-  --surf3: #2d333b;
-  --border: #30363d;
-  --blue: #58a6ff;
-  --yellow: #e3b341;
-  --green: #3fb950;
+  --bg: #0a0f06;
+  --surf: #131a0e;
+  --surf2: #1c2414;
+  --surf3: #263018;
+  --border: #2e3a1e;
+  --blue: #4caf50;
+  --yellow: #c8b400;
+  --green: #8bc34a;
   --red: #f85149;
-  --purple: #a371f7;
+  --purple: #a5d63f;
   --text: #e6edf3;
   --dim: #8b949e;
   --r: 10px;
@@ -1213,6 +1259,31 @@ textarea { resize: none; min-height: 70px; }
 </style>
 </head>
 <body>
+<!-- PASSWORD SCREEN -->
+<div id="pw-screen" style="
+  position:fixed;inset:0;background:#0a0f06;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  font-family:'Heebo',sans-serif;direction:rtl;
+">
+  <div style="font-size:48px">🪖</div>
+  <div style="font-size:26px;font-weight:900;color:#4caf50;letter-spacing:-1px">מפקד</div>
+  <div style="font-size:13px;color:#556b2f">מערכת ניהול כיתה – חיל ההנדסה</div>
+  <div style="width:280px;display:flex;flex-direction:column;gap:10px;margin-top:10px">
+    <input id="pw-input" type="password" placeholder="סיסמה" style="
+      background:#1c2414;border:1px solid #2e3a1e;border-radius:10px;
+      color:#e6edf3;font-family:'Heebo',sans-serif;font-size:18px;
+      padding:14px 16px;text-align:center;outline:none;width:100%;
+      -webkit-appearance:none;letter-spacing:4px;
+    " onkeydown="if(event.key==='Enter')checkPW()">
+    <button onclick="checkPW()" style="
+      background:#4caf50;border:none;border-radius:10px;color:#fff;
+      font-family:'Heebo',sans-serif;font-size:16px;font-weight:700;
+      padding:14px;cursor:pointer;width:100%;
+    ">כניסה</button>
+    <div id="pw-error" style="color:#f85149;font-size:13px;text-align:center;min-height:18px"></div>
+  </div>
+</div>
+
 <div id="app">
 
 <!-- TOP BAR -->
@@ -1617,6 +1688,10 @@ textarea { resize: none; min-height: 70px; }
       <button class="btn sm" style="background:var(--purple)" onclick="addTableCol(null)">＋ עמודה</button>
       <button class="btn sm yellow" onclick="addTableGroup()" style="color:#0d1117">＋ קבוצה</button>
       <button class="btn sm ghost" onclick="exportCSV()">⬇ ייצוא Excel</button>
+      <label class="btn sm ghost" style="cursor:pointer" title="ייבוא CSV">
+        ⬆ ייבוא CSV
+        <input type="file" accept=".csv" style="display:none" onchange="importCSV(this)">
+      </label>
       <span class="tbl-hint">לחץ פעמיים על כותרת לעריכה</span>
     </div>
 
@@ -1725,6 +1800,10 @@ let engCal = {
 
 function saveEngCal() {
   try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
+  clearTimeout(window._engSaveTimer);
+  window._engSaveTimer = setTimeout(() => {
+    if (window.fbSave) window.fbSave('engCal', engCal).catch(()=>{});
+  }, 800);
 }
 function loadEngCal() {
   try {
@@ -1732,17 +1811,47 @@ function loadEngCal() {
     if (d) engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, JSON.parse(d));
   } catch(e) {}
 }
+async function loadEngCalFromFirebase() {
+  if (!window.fbLoad) return;
+  try {
+    const remote = await window.fbLoad('engCal', null);
+    if (remote) {
+      engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, remote);
+      try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
+    }
+  } catch(e) {}
+}
 
 let S = Object.assign({}, defaultState);
 
+// ── Firebase save/load ──
+let _saveTimer = null;
 function save() {
+  // Still keep localStorage as fallback
   try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+  // Debounced Firebase save
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (window.fbSave) window.fbSave('state', S).catch(()=>{});
+  }, 800);
 }
+
 function load() {
   try {
     const d = localStorage.getItem('mifkad2');
     if (d) S = Object.assign({}, defaultState, JSON.parse(d));
   } catch(e) {}
+}
+
+async function loadFromFirebase() {
+  if (!window.fbLoad) return;
+  try {
+    const remote = await window.fbLoad('state', null);
+    if (remote) {
+      S = Object.assign({}, defaultState, remote);
+      try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+    }
+  } catch(e) { console.warn('Firebase load error', e); }
 }
 
 // ======= TABS =======
@@ -3116,78 +3225,153 @@ function renderAll() {
   if (solMainView === 'calendar') renderEngCalendar();
 }
 
-// ======= INIT =======
-load();
-ensureClassColors();
-loadEngCal();
-migrateTableColumns();
-renderAll();
-</script>
+// ======= PASSWORD =======
+const CORRECT_PW = 'handasa2025';
+function checkPW() {
+  const val = document.getElementById('pw-input').value;
+  if (val === CORRECT_PW) {
+    document.getElementById('pw-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    startApp();
+  } else {
+    document.getElementById('pw-error').textContent = 'סיסמה שגויה. נסה שוב.';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+// Check if already authenticated this session
+if (sessionStorage.getItem('pw_ok') === '1') {
+  document.getElementById('pw-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+// Override checkPW to also store session
+const _origCheckPW = checkPW;
+window.checkPW = function() {
+  const val = document.getElementById('pw-input').value;
+  if (val === CORRECT_PW) sessionStorage.setItem('pw_ok', '1');
+  _origCheckPW();
+};
 
-<!-- ══════════ PWA ══════════ -->
+// ======= CSV IMPORT =======
+function importCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.split(/
+?
+/).filter(l => l.trim());
+    if (lines.length < 2) { alert('הקובץ ריק או לא תקין'); return; }
+    
+    // Parse headers (skip BOM)
+    const headerLine = lines[0].replace(/^﻿/, '');
+    const headers = headerLine.split(',').map(h => h.replace(/^"|"$/g,'').trim());
+    
+    // Reset columns to match CSV
+    S.tableColumns = headers.map((h, i) => ({ id: Date.now() + i, name: h }));
+    S.tableGroups = [{ id: 1, name: 'נתונים', colIds: S.tableColumns.map(c => c.id) }];
+    
+    // Parse rows
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cells = lines[i].split(',').map(c => c.replace(/^"|"$/g,'').trim());
+      rows.push({ id: Date.now() + i * 1000, data: cells });
+    }
+    S.tableRows = rows;
+    save();
+    renderTable();
+    alert('✅ יובאו ' + rows.length + ' שורות בהצלחה!');
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ======= INIT =======
+async function startApp() {
+  load();
+  loadEngCal();
+  ensureClassColors();
+  migrateTableColumns();
+  renderAll();
+  
+  // Load from Firebase in background
+  if (window.fbLoad) {
+    await loadFromFirebase();
+    await loadEngCalFromFirebase();
+    renderAll();
+    
+    // Listen for real-time updates from other users
+    window.fbListen('state', (remote) => {
+      const localStr = JSON.stringify(S);
+      const remoteStr = JSON.stringify(remote);
+      if (localStr !== remoteStr) {
+        S = Object.assign({}, defaultState, remote);
+        try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+        renderAll();
+      }
+    });
+    window.fbListen('engCal', (remote) => {
+      engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, remote);
+      try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
+      if (solMainView === 'calendar') renderEngCalendar();
+    });
+  }
+}
+
+// If already authenticated, start immediately
+if (sessionStorage.getItem('pw_ok') === '1') {
+  window._initAppWhenReady = startApp;
+  if (window._fbReady) startApp();
+} else {
+  // Hide app until password entered
+  document.getElementById('app').style.display = 'none';
+  window._initAppWhenReady = function() {
+    // Will be called after password is entered
+  };
+}
+</script>
+<!-- PWA Install -->
 <style>
 #pwa-install-btn {
   display: none;
   position: fixed;
   bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 50%; transform: translateX(-50%);
   z-index: 999;
-  background: linear-gradient(135deg, #58a6ff, #a371f7);
-  color: #fff;
-  border: none;
-  border-radius: 30px;
+  background: linear-gradient(135deg, #4caf50, #8bc34a);
+  color: #fff; border: none; border-radius: 30px;
   padding: 12px 24px;
-  font-family: 'Heebo', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(88,166,255,0.4);
-  white-space: nowrap;
-  gap: 8px;
-  align-items: center;
+  font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 700;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(76,175,80,0.4);
+  white-space: nowrap; gap: 8px; align-items: center;
   animation: pwa-bounce 2s ease-in-out infinite;
 }
 #pwa-install-btn.visible { display: flex; }
 @keyframes pwa-bounce {
   0%,100% { transform: translateX(-50%) translateY(0); }
-  50%      { transform: translateX(-50%) translateY(-4px); }
+  50% { transform: translateX(-50%) translateY(-4px); }
 }
 </style>
-
-<button id="pwa-install-btn" onclick="pwaTriggerInstall()">
-  📱 הוסף למסך הבית
-</button>
-
+<button id="pwa-install-btn" onclick="pwaTriggerInstall()">📱 הוסף למסך הבית</button>
 <script>
-/* ── Service Worker ── */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW:', err));
-  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 }
-
-/* ── Install prompt ── */
 let _pwaPrompt = null;
-
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  _pwaPrompt = e;
+  e.preventDefault(); _pwaPrompt = e;
   document.getElementById('pwa-install-btn').classList.add('visible');
 });
-
 window.addEventListener('appinstalled', () => {
   document.getElementById('pwa-install-btn').classList.remove('visible');
   _pwaPrompt = null;
 });
-
 function pwaTriggerInstall() {
   if (!_pwaPrompt) return;
   _pwaPrompt.prompt();
   _pwaPrompt.userChoice.then(c => {
-    if (c.outcome === 'accepted') {
-      document.getElementById('pwa-install-btn').classList.remove('visible');
-    }
+    if (c.outcome === 'accepted') document.getElementById('pwa-install-btn').classList.remove('visible');
     _pwaPrompt = null;
   });
 }
