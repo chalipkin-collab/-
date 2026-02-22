@@ -1505,6 +1505,74 @@ textarea { resize: none; min-height: 70px; }
 
 </div><!-- /app -->
 
+
+<!-- ADMIN SETTINGS MODAL -->
+<div class="modal-overlay" id="modal-admin">
+  <div class="modal" style="max-height:90vh">
+    <div class="modal-title">⚙️ הגדרות מנהל <button class="modal-close" onclick="closeModal('modal-admin')">×</button></div>
+
+    <!-- Change password -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">🔑 שינוי סיסמה</div>
+      <div class="form-row"><label>סיסמה נוכחית</label><input type="password" id="admin-old-pw" placeholder="הסיסמה הנוכחית"></div>
+      <div class="form-row"><label>סיסמה חדשה</label><input type="password" id="admin-new-pw" placeholder="סיסמה חדשה"></div>
+      <button class="btn full green" onclick="adminChangePW()">שמור סיסמה חדשה</button>
+      <div id="admin-pw-msg" style="font-size:13px;margin-top:8px;text-align:center;min-height:18px"></div>
+    </div>
+
+    <!-- App name & color -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">🎨 שם האפליקציה וצבע</div>
+      <div class="form-row"><label>שם האפליקציה</label><input type="text" id="admin-app-name" placeholder="מפקד"></div>
+      <div class="form-row"><label>צבע ראשי</label>
+        <select id="admin-color">
+          <option value="#4caf50">🟢 ירוק צבאי (נוכחי)</option>
+          <option value="#58a6ff">🔵 כחול</option>
+          <option value="#e3b341">🟡 זהב</option>
+          <option value="#f85149">🔴 אדום</option>
+          <option value="#a371f7">🟣 סגול</option>
+        </select>
+      </div>
+      <button class="btn full" onclick="adminSaveAppSettings()">שמור הגדרות</button>
+    </div>
+
+    <!-- Manage tabs -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">📑 ניהול טאבים</div>
+      <div id="admin-tabs-list" style="margin-bottom:10px"></div>
+      <div class="form-row"><label>שם טאב חדש</label><input type="text" id="admin-new-tab" placeholder="לדוגמה: דוחות"></div>
+      <div class="form-row"><label>אייקון</label>
+        <select id="admin-new-tab-icon">
+          <option value="📋">📋 רשימה</option>
+          <option value="📊">📊 גרף</option>
+          <option value="🗂️">🗂️ תיקייה</option>
+          <option value="📝">📝 הערות</option>
+          <option value="🔔">🔔 התראות</option>
+          <option value="⭐">⭐ מועדפים</option>
+        </select>
+      </div>
+      <button class="btn full yellow" style="color:#0a0f06" onclick="adminAddTab()">➕ הוסף טאב</button>
+    </div>
+
+    <!-- Table columns -->
+    <div class="card">
+      <div class="card-title">📊 שמות עמודות ברירת מחדל</div>
+      <div id="admin-cols-list" style="margin-bottom:10px"></div>
+      <button class="btn full ghost" onclick="adminSaveCols()">💾 שמור עמודות</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="modal-overlay" id="modal-admin-login">
+  <div class="modal">
+    <div class="modal-title">🔐 כניסת מנהל <button class="modal-close" onclick="closeModal('modal-admin-login')">×</button></div>
+    <div class="form-row"><label>סיסמת מנהל</label><input type="password" id="admin-login-pw" placeholder="סיסמת מנהל" onkeydown="if(event.key==='Enter')adminLogin()"></div>
+    <button class="btn full" onclick="adminLogin()">כניסה</button>
+    <div id="admin-login-err" style="color:#f85149;font-size:13px;text-align:center;margin-top:8px;min-height:18px"></div>
+  </div>
+</div>
+
 <!-- =================== MODALS =================== -->
 
 <!-- ADD EVENT -->
@@ -3225,6 +3293,163 @@ function renderAll() {
   if (solMainView === 'calendar') renderEngCalendar();
 }
 
+
+// ======= ADMIN SETTINGS =======
+const ADMIN_PW_KEY = 'admin_pw';
+
+function getAdminPW() {
+  return S.adminPW || 'admin1234';
+}
+
+function adminLogin() {
+  const pw = document.getElementById('admin-login-pw').value;
+  if (pw === getAdminPW()) {
+    closeModal('modal-admin-login');
+    document.getElementById('admin-login-pw').value = '';
+    document.getElementById('admin-login-err').textContent = '';
+    openAdminPanel();
+  } else {
+    document.getElementById('admin-login-err').textContent = 'סיסמה שגויה';
+    document.getElementById('admin-login-pw').value = '';
+  }
+}
+
+function openAdminLogin() {
+  document.getElementById('modal-admin-login').classList.add('open');
+}
+
+function openAdminPanel() {
+  document.getElementById('modal-admin').classList.add('open');
+  renderAdminPanel();
+}
+
+function renderAdminPanel() {
+  // App name
+  const nameEl = document.getElementById('admin-app-name');
+  if (nameEl) nameEl.value = S.appName || 'מפקד';
+  
+  // Color
+  const colorEl = document.getElementById('admin-color');
+  if (colorEl && S.appColor) colorEl.value = S.appColor;
+
+  // Tabs list
+  const tabsList = document.getElementById('admin-tabs-list');
+  const customTabs = S.customTabs || [];
+  tabsList.innerHTML = customTabs.length ? customTabs.map((t,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:18px">${t.icon}</span>
+      <span style="flex:1;font-size:14px">${t.name}</span>
+      <button class="del-btn" onclick="adminDelTab(${i})">×</button>
+    </div>
+  `).join('') : '<div style="color:var(--dim);font-size:13px;padding:8px 0">אין טאבים מותאמים עדיין</div>';
+
+  // Columns list
+  const colsList = document.getElementById('admin-cols-list');
+  colsList.innerHTML = S.tableColumns.map((col,i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <input type="text" value="${col.name}" id="admin-col-${col.id}" style="flex:1">
+    </div>
+  `).join('');
+}
+
+function adminChangePW() {
+  const oldPw = document.getElementById('admin-old-pw').value;
+  const newPw = document.getElementById('admin-new-pw').value.trim();
+  const msg = document.getElementById('admin-pw-msg');
+  
+  if (oldPw !== getAdminPW()) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'סיסמה נוכחית שגויה';
+    return;
+  }
+  if (newPw.length < 3) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'הסיסמה קצרה מדי (מינימום 3 תווים)';
+    return;
+  }
+  S.adminPW = newPw;
+  save();
+  document.getElementById('admin-old-pw').value = '';
+  document.getElementById('admin-new-pw').value = '';
+  msg.style.color = 'var(--green)';
+  msg.textContent = '✅ הסיסמה עודכנה בהצלחה!';
+}
+
+function adminSaveAppSettings() {
+  const name = document.getElementById('admin-app-name').value.trim();
+  const color = document.getElementById('admin-color').value;
+  if (name) S.appName = name;
+  if (color) S.appColor = color;
+  save();
+  applyAppSettings();
+  alert('✅ ההגדרות נשמרו!');
+}
+
+function applyAppSettings() {
+  // Update app name in logo
+  const logo = document.querySelector('.top-bar .logo');
+  if (logo && S.appName) logo.innerHTML = S.appName.replace(/(.)(.)/, '$1<span>$2</span>');
+  
+  // Update primary color
+  if (S.appColor) {
+    document.documentElement.style.setProperty('--blue', S.appColor);
+  }
+}
+
+function adminAddTab() {
+  const name = document.getElementById('admin-new-tab').value.trim();
+  const icon = document.getElementById('admin-new-tab-icon').value;
+  if (!name) return;
+  if (!S.customTabs) S.customTabs = [];
+  S.customTabs.push({ name, icon, id: Date.now() });
+  document.getElementById('admin-new-tab').value = '';
+  save();
+  renderAdminPanel();
+  renderCustomTabs();
+}
+
+function adminDelTab(i) {
+  S.customTabs.splice(i, 1);
+  save();
+  renderAdminPanel();
+  renderCustomTabs();
+}
+
+function renderCustomTabs() {
+  // Add custom tabs to bottom nav
+  const nav = document.querySelector('.bottom-nav');
+  // Remove old custom tabs
+  nav.querySelectorAll('.custom-nav-btn').forEach(b => b.remove());
+  // Add new ones
+  (S.customTabs || []).forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn custom-nav-btn';
+    btn.innerHTML = `<span class="icon">${t.icon}</span><span>${t.name}</span><span class="nav-pip"></span>`;
+    btn.onclick = () => alert('טאב "' + t.name + '" — ניתן להוסיף תוכן עתידי');
+    nav.appendChild(btn);
+  });
+}
+
+function adminSaveCols() {
+  S.tableColumns.forEach(col => {
+    const el = document.getElementById('admin-col-' + col.id);
+    if (el && el.value.trim()) col.name = el.value.trim();
+  });
+  save();
+  renderTable();
+  alert('✅ שמות העמודות עודכנו!');
+}
+
+// Apply settings on load
+function applyAdminSettingsOnLoad() {
+  if (S.appColor) document.documentElement.style.setProperty('--blue', S.appColor);
+  if (S.appName) {
+    const logo = document.querySelector('.top-bar .logo');
+    if (logo) logo.textContent = S.appName;
+  }
+  renderCustomTabs();
+}
+
 // ======= PASSWORD =======
 const CORRECT_PW = '1234';
 function checkPW() {
@@ -3287,6 +3512,7 @@ function startApp() {
   ensureClassColors();
   migrateTableColumns();
   renderAll();
+  applyAdminSettingsOnLoad();
   
   // Load Firebase in background after app is shown
   setTimeout(async () => {
