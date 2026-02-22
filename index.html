@@ -3383,47 +3383,67 @@ const DEFAULT_TAB_NAMES = {
 };
 
 function renderAdminPanel() {
-  // App name & color
+  // App name
   const nameEl = document.getElementById('admin-app-name');
   if (nameEl) nameEl.value = S.appName || 'מפקד';
+  
+  // Color
   const colorEl = document.getElementById('admin-color');
   if (colorEl && S.appColor) colorEl.value = S.appColor;
+  
+  // Theme
+  const themeEl = document.getElementById('admin-theme');
+  if (themeEl && S.appTheme) themeEl.value = S.appTheme;
 
   // Existing tabs rename
   const existingList = document.getElementById('admin-existing-tabs-list');
   if (existingList) {
-    existingList.innerHTML = Object.entries(DEFAULT_TAB_NAMES).map(([id, t]) => {
-      const saved = S.tabNames && S.tabNames[id];
-      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:18px">\${t.icon}</span>
-        <input type="text" id="tab-rename-\${id}" value="\${saved || t.default}" style="flex:1">
-      </div>`;
-    }).join('');
+    let html = '';
+    Object.entries(DEFAULT_TAB_NAMES).forEach(function(entry) {
+      const id = entry[0], t = entry[1];
+      const saved = (S.tabNames && S.tabNames[id]) || t.default;
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+      html += '<span style="font-size:18px">' + t.icon + '</span>';
+      html += '<input type="text" id="tab-rename-' + id + '" value="' + saved + '" style="flex:1">';
+      html += '</div>';
+    });
+    existingList.innerHTML = html;
   }
 
   // Custom tabs list
   const tabsList = document.getElementById('admin-tabs-list');
-  const customTabs = S.customTabs || [];
-  if (tabsList) tabsList.innerHTML = customTabs.length ? customTabs.map((t,i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:18px">\${t.icon}</span>
-      <span style="flex:1;font-size:14px">\${t.name}</span>
-      <button class="del-btn" onclick="adminDelTab(\${i})">×</button>
-    </div>
-  `).join('') : '<div style="color:var(--dim);font-size:13px;padding:8px 0">אין טאבים מותאמים</div>';
+  if (tabsList) {
+    const customTabs = S.customTabs || [];
+    if (customTabs.length === 0) {
+      tabsList.innerHTML = '<div style="color:var(--dim);font-size:13px;padding:6px 0">אין טאבים מותאמים עדיין</div>';
+    } else {
+      let html = '';
+      customTabs.forEach(function(t, i) {
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">';
+        html += '<span style="font-size:18px">' + t.icon + '</span>';
+        html += '<span style="flex:1;font-size:14px">' + t.name + '</span>';
+        html += '<span style="font-size:11px;color:var(--dim)">' + (t.type === 'notes' ? 'הערות' : t.type === 'tasks' ? 'משימות' : 'טבלה') + '</span>';
+        html += '<button class="del-btn" onclick="adminDelTab(' + i + ')">x</button>';
+        html += '</div>';
+      });
+      tabsList.innerHTML = html;
+    }
+  }
 
-  // Columns list with delete & reorder
+  // Table columns
   const colsList = document.getElementById('admin-cols-list');
-  if (colsList) colsList.innerHTML = S.tableColumns.map((col, i) => `
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px" id="admin-col-row-\${col.id}">
-      <span style="color:var(--dim);font-size:16px;cursor:grab">☰</span>
-      <input type="text" value="\${col.name}" id="admin-col-\${col.id}" style="flex:1">
-      <button onclick="adminMoveCol(\${i},-1)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);padding:4px 7px;cursor:pointer;font-size:13px">↑</button>
-      <button onclick="adminMoveCol(\${i},1)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);padding:4px 7px;cursor:pointer;font-size:13px">↓</button>
-      <button onclick="adminDelCol(\${col.id})" style="background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;padding:0 4px">×</button>
-    </div>
-  `).join('');
+  if (colsList) {
+    let html = '';
+    S.tableColumns.forEach(function(col) {
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+      html += '<input type="text" id="admin-col-' + col.id + '" value="' + col.name + '" style="flex:1">';
+      html += '<button class="del-btn" onclick="adminDelCol(' + col.id + ')">x</button>';
+      html += '</div>';
+    });
+    colsList.innerHTML = html;
+  }
 }
+
 
 function adminChangeUserPW() {
   const newPw = document.getElementById('admin-user-pw').value.trim();
@@ -3584,8 +3604,169 @@ function openCustomTab(tab) {
   modal.classList.add('open');
 }
 
+
+function addCustomTableRow(tabId) {
+  if (!S.customTabData || !S.customTabData[tabId]) return;
+  const cols = S.customTabData[tabId].cols || [];
+  if (!S.customTabData[tabId].rows) S.customTabData[tabId].rows = [];
+  S.customTabData[tabId].rows.push(new Array(cols.length).fill(''));
+  save();
+  const tab = (S.customTabs || []).find(function(t) { return t.id === tabId; });
+  if (tab) renderCustomTabContent(tab);
+}
+
+function updateCustomTableCell(tabId, ri, ci, val) {
+  if (!S.customTabData || !S.customTabData[tabId]) return;
+  if (!S.customTabData[tabId].rows[ri]) return;
+  S.customTabData[tabId].rows[ri][ci] = val;
+  save();
+}
+
+function saveCustomNotes(tabId) {
+  const el = document.getElementById('notes-' + tabId);
+  if (!el) return;
+  if (!S.customTabData) S.customTabData = {};
+  if (!S.customTabData[tabId]) S.customTabData[tabId] = {};
+  S.customTabData[tabId].text = el.value;
+  save();
+  const btn = el.parentElement.querySelector('button');
+  if (btn) { const orig = btn.textContent; btn.textContent = 'נשמר!'; setTimeout(function() { btn.textContent = orig; }, 1000); }
+}
+
+function addCustomListItem(tabId) {
+  const inp = document.getElementById('list-input-' + tabId);
+  if (!inp || !inp.value.trim()) return;
+  if (!S.customTabData) S.customTabData = {};
+  if (!S.customTabData[tabId]) S.customTabData[tabId] = { items: [] };
+  if (!S.customTabData[tabId].items) S.customTabData[tabId].items = [];
+  S.customTabData[tabId].items.push({ text: inp.value.trim(), done: false });
+  inp.value = '';
+  save();
+  const tab = (S.customTabs || []).find(function(t) { return t.id === tabId; });
+  if (tab) renderCustomTabContent(tab);
+}
+
+function toggleCustomItem(tabId, i) {
+  if (!S.customTabData || !S.customTabData[tabId]) return;
+  const items = S.customTabData[tabId].items || [];
+  if (items[i]) { items[i].done = !items[i].done; save(); }
+  const tab = (S.customTabs || []).find(function(t) { return t.id === tabId; });
+  if (tab) renderCustomTabContent(tab);
+}
+
 function renderCustomTabContent(tab) {
-  // This function is replaced by buildCustomTabHTML + renderCustomTabs
+  const con = document.getElementById('custom-tab-content');
+  if (!con) return;
+  if (!S.customTabData) S.customTabData = {};
+  if (!S.customTabData[tab.id]) S.customTabData[tab.id] = { items: [], text: '' };
+  const data = S.customTabData[tab.id];
+  const tid = tab.id;
+
+  if (tab.type === 'notes') {
+    const text = data.text || '';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn full green';
+    saveBtn.style.marginTop = '10px';
+    saveBtn.textContent = 'שמור';
+    saveBtn.onclick = function() { saveCustomNotes(tid); };
+    const ta = document.createElement('textarea');
+    ta.id = 'notes-' + tid;
+    ta.style.cssText = 'width:100%;min-height:250px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:Heebo,sans-serif;font-size:15px;padding:12px;resize:vertical;outline:none;direction:rtl';
+    ta.placeholder = 'כתוב כאן הערות חופשיות...';
+    ta.value = text;
+    con.innerHTML = '';
+    con.appendChild(ta);
+    con.appendChild(saveBtn);
+
+  } else if (tab.type === 'tasks') {
+    const items = data.items || [];
+    // Build add row using DOM to avoid quote issues
+    const addRow = document.createElement('div');
+    addRow.style.cssText = 'display:flex;gap:8px;margin-bottom:12px';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.id = 'list-input-' + tid;
+    inp.placeholder = 'פריט חדש...'; inp.style.flex = '1';
+    inp.onkeydown = function(e) { if(e.key === 'Enter') addCustomListItem(tid); };
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn green'; addBtn.textContent = 'הוסף';
+    addBtn.onclick = function() { addCustomListItem(tid); };
+    addRow.appendChild(inp); addRow.appendChild(addBtn);
+    con.innerHTML = '';
+    con.appendChild(addRow);
+    let html = '';
+    if (items.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'אין פריטים עדיין';
+      con.appendChild(empty);
+    } else {
+      items.forEach(function(item, idx_i) {
+        const row = document.createElement('div');
+        row.className = 'task-item' + (item.done ? ' done' : '');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.className = 'task-cb';
+        cb.checked = !!item.done;
+        (function(i) { cb.onchange = function() { toggleCustomItem(tid, i); }; })(idx_i);
+        const body = document.createElement('div'); body.className = 'task-body';
+        const label = document.createElement('div'); label.className = 'task-label';
+        label.textContent = item.text;
+        body.appendChild(label);
+        const del = document.createElement('button'); del.className = 'del-btn';
+        del.textContent = 'x';
+        (function(i) { del.onclick = function() { delCustomItem(tid, i); }; })(idx_i);
+        row.appendChild(cb); row.appendChild(body); row.appendChild(del);
+        con.appendChild(row);
+      });
+    }
+
+  } else if (tab.type === 'table') {
+    if (!data.cols) { data.cols = ['עמודה 1', 'עמודה 2']; data.rows = []; }
+    const cols = data.cols;
+    const rows = data.rows || [];
+    const wrapper = document.createElement('div');
+    wrapper.style.overflowX = 'auto';
+    const tbl = document.createElement('table');
+    tbl.className = 'ex-table';
+    const thead = document.createElement('thead');
+    const hrow = document.createElement('tr');
+    cols.forEach(function(c) {
+      const th = document.createElement('th'); th.className = 'th-col';
+      th.innerHTML = '<div class="th-col-top"><span class="th-col-label">' + c + '</span></div>';
+      hrow.appendChild(th);
+    });
+    const thAction = document.createElement('th'); thAction.style.width = '30px';
+    hrow.appendChild(thAction);
+    thead.appendChild(hrow); tbl.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    rows.forEach(function(r, ri) {
+      const tr = document.createElement('tr');
+      cols.forEach(function(_, ci) {
+        const td = document.createElement('td');
+        const inp = document.createElement('input'); inp.type = 'text';
+        inp.value = r[ci] || '';
+        (function(row_i, col_i) {
+          inp.onchange = function() { updateCustomTableCell(tid, row_i, col_i, this.value); };
+        })(ri, ci);
+        td.appendChild(inp); tr.appendChild(td);
+      });
+      const tdDel = document.createElement('td');
+      const delBtn = document.createElement('button'); delBtn.className = 'del-btn';
+      delBtn.textContent = 'x';
+      (function(row_i) { delBtn.onclick = function() { delCustomItem(tid, row_i); }; })(ri);
+      tdDel.appendChild(delBtn); tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    });
+    // Add row button
+    const addTr = document.createElement('tr');
+    const addTd = document.createElement('td'); addTd.colSpan = cols.length + 1;
+    addTd.style.padding = '8px';
+    const addRowBtn = document.createElement('button');
+    addRowBtn.className = 'btn sm green'; addRowBtn.textContent = '+ שורה';
+    addRowBtn.onclick = function() { addCustomTableRow(tid); };
+    addTd.appendChild(addRowBtn); addTr.appendChild(addTd); tbody.appendChild(addTr);
+    tbl.appendChild(tbody); wrapper.appendChild(tbl);
+    con.appendChild(wrapper);
+  }
 }
 
 function addCustomNote(tabId) {
