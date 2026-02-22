@@ -1,0 +1,3377 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>מפקד</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#131a0e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="מפקד">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAASod1n3ztCXCytdpabT4VQ42-nflR_pc",
+    authDomain: "mefaked-a7fc8.firebaseapp.com",
+    projectId: "mefaked-a7fc8",
+    storageBucket: "mefaked-a7fc8.firebasestorage.app",
+    messagingSenderId: "185830133819",
+    appId: "1:185830133819:web:a08c3a4c35e2b7aed5cc1e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+
+  // Firebase save
+  window.fbSave = async function(key, data) {
+    try {
+      await setDoc(doc(db, 'mefaked', key), { data: JSON.stringify(data) });
+    } catch(e) { console.warn('fbSave error', e); }
+  };
+
+  // Firebase load
+  window.fbLoad = async function(key, fallback) {
+    try {
+      const snap = await getDoc(doc(db, 'mefaked', key));
+      if (snap.exists()) return JSON.parse(snap.data().data);
+    } catch(e) { console.warn('fbLoad error', e); }
+    return fallback;
+  };
+
+  // Real-time listener
+  window.fbListen = function(key, cb) {
+    return onSnapshot(doc(db, 'mefaked', key), snap => {
+      if (snap.exists()) {
+        try { cb(JSON.parse(snap.data().data)); } catch(e) {}
+      }
+    });
+  };
+
+  // Init app after Firebase is ready
+  window._fbReady = true;
+  if (window._initAppWhenReady) window._initAppWhenReady();
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;900&display=swap');
+
+:root {
+  --bg: #0a0f06;
+  --surf: #131a0e;
+  --surf2: #1c2414;
+  --surf3: #263018;
+  --border: #2e3a1e;
+  --blue: #4caf50;
+  --yellow: #c8b400;
+  --green: #8bc34a;
+  --red: #f85149;
+  --purple: #a5d63f;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --r: 10px;
+  --nav-h: 64px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  font-family: 'Heebo', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  direction: rtl;
+  overscroll-behavior: none;
+}
+
+/* ── LAYOUT ── */
+#app { display: flex; flex-direction: column; height: 100%; }
+
+.top-bar {
+  background: var(--surf);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.top-bar .logo { font-size: 20px; font-weight: 900; color: var(--blue); letter-spacing: -0.5px; }
+.top-bar .logo span { color: var(--yellow); }
+.top-bar .date-info { margin-right: auto; text-align: left; }
+.top-bar .date-greg { font-size: 12px; color: var(--dim); }
+.top-bar .date-heb  { font-size: 11px; color: var(--yellow); font-weight: 700; }
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px calc(var(--nav-h) + 16px);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: var(--surf);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dim);
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  transition: color 0.15s;
+  padding: 8px 4px;
+}
+.nav-btn .icon { font-size: 20px; line-height: 1; }
+.nav-btn.active { color: var(--blue); }
+.nav-btn.active .nav-pip { display: block; }
+.nav-pip {
+  display: none;
+  width: 4px; height: 4px;
+  background: var(--blue);
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+/* ── TABS ── */
+.tab { display: none; }
+.tab.active { display: block; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+}
+
+/* ── SECTION HEADER ── */
+.sec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.sec-title { font-size: 18px; font-weight: 700; }
+
+/* ── INPUTS ── */
+input[type="text"], input[type="date"], input[type="time"], select, textarea {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 15px;
+  padding: 10px 12px;
+  width: 100%;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+select option { background: var(--surf2); }
+textarea { resize: none; min-height: 70px; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--blue);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-family: 'Heebo', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn:active { opacity: 0.7; }
+.btn.full { width: 100%; }
+.btn.sm { padding: 6px 12px; font-size: 13px; }
+.btn.ghost { background: var(--surf2); color: var(--text); border: 1px solid var(--border); }
+.btn.green { background: var(--green); }
+.btn.yellow { background: var(--yellow); color: #0d1117; }
+.btn.red { background: var(--red); }
+.btn.purple { background: var(--purple); }
+
+/* ── FORM ROW ── */
+.form-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.form-row label { font-size: 12px; color: var(--dim); font-weight: 600; margin-bottom: 2px; display: block; }
+.row-btns { display: flex; gap: 8px; }
+.row-btns .btn { flex: 1; }
+
+/* ── CALENDAR ── */
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.cal-nav-btn {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 18px;
+  width: 40px; height: 40px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-month-title { font-size: 17px; font-weight: 700; text-align: center; }
+.cal-sub { font-size: 11px; color: var(--dim); text-align: center; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+.cal-dname { font-size: 10px; color: var(--dim); padding: 4px 0; font-weight: 700; }
+.cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  position: relative;
+  transition: background 0.12s;
+  padding: 1px;
+}
+.cal-cell:active { background: var(--surf3); }
+.cal-cell.today { background: var(--blue); color: white; }
+.cal-cell.today .hday { color: rgba(255,255,255,0.65); }
+.cal-cell.has-ev::after {
+  content: '';
+  width: 5px; height: 5px;
+  background: var(--yellow);
+  border-radius: 50%;
+  position: absolute;
+  bottom: 2px;
+}
+.cal-cell.today.has-ev::after { background: white; }
+.cal-cell .hday { font-size: 9px; color: var(--dim); }
+
+/* ── EVENT ITEMS ── */
+.ev-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  background: var(--surf2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.ev-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ev-body { flex: 1; min-width: 0; }
+.ev-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev-meta { font-size: 12px; color: var(--dim); margin-top: 2px; }
+.del-btn { background: none; border: none; color: var(--dim); cursor: pointer; font-size: 18px; padding: 4px; flex-shrink: 0; }
+.del-btn:active { color: var(--red); }
+
+/* ── TASKS ── */
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surf2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: opacity 0.2s;
+}
+.task-item.done { opacity: 0.45; }
+.task-item.done .task-label { text-decoration: line-through; }
+.task-cb {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  background: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  margin-top: 1px;
+  transition: all 0.15s;
+}
+.task-cb:checked { background: var(--green); border-color: var(--green); }
+.task-cb:checked::after {
+  content: '✓';
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+}
+.task-body { flex: 1; min-width: 0; }
+.task-label { font-size: 15px; line-height: 1.4; }
+.task-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-top: 4px;
+}
+.p-high { background: rgba(248,81,73,0.18); color: var(--red); }
+.p-mid  { background: rgba(227,179,65,0.18); color: var(--yellow); }
+.p-low  { background: rgba(63,185,80,0.18); color: var(--green); }
+
+/* ── CLASSES ── */
+.class-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+  margin: 3px;
+}
+.class-chip.active { border-color: white; }
+.chips-wrap { display: flex; flex-wrap: wrap; }
+
+/* ── SOLDIER SCHEDULE ── */
+.sol-date-block { margin-bottom: 14px; }
+.sol-date-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.sol-ev {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surf2);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border-right: 3px solid;
+}
+.sol-ev .class-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--surf3);
+  white-space: nowrap;
+}
+.sol-ev .sol-desc { flex: 1; font-size: 14px; }
+.ev-type-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--surf3);
+}
+
+/* ── REQUESTS ── */
+.req-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surf2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.req-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.req-body { flex: 1; min-width: 0; }
+.req-text { font-size: 14px; font-weight: 600; }
+.req-due { font-size: 12px; color: var(--dim); margin-top: 2px; }
+.req-done-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--dim);
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.req-done-btn.active { background: var(--green); border-color: var(--green); color: white; }
+
+/* ── TABLE ── */
+.tbl-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  margin-top: 4px;
+  /* smooth momentum scroll on iOS */
+  scroll-behavior: smooth;
+}
+.ex-table {
+  border-collapse: collapse;
+  min-width: 600px;
+  width: 100%;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+/* ── Search bar ── */
+.tbl-search-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+.tbl-search-wrap .search-icon {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--dim);
+  font-size: 15px;
+  pointer-events: none;
+}
+.tbl-search {
+  width: 100%;
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 14px;
+  padding: 9px 36px 9px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.tbl-search:focus { border-color: var(--blue); }
+.tbl-search::placeholder { color: var(--dim); }
+.tbl-search-clear {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+  display: none;
+}
+.tbl-search-clear.visible { display: block; }
+
+/* ── Stats row ── */
+.tbl-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--dim);
+  flex-wrap: wrap;
+}
+.tbl-stats .tbl-count { font-weight: 700; color: var(--text); }
+.tbl-active-filters {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(88,166,255,0.15);
+  border: 1px solid rgba(88,166,255,0.3);
+  color: var(--blue);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px 2px 4px;
+  cursor: pointer;
+}
+.filter-chip:hover { background: rgba(248,81,73,0.15); border-color: rgba(248,81,73,0.3); color: var(--red); }
+
+/* ── Group header row ── */
+.ex-table th.th-group {
+  background: rgba(88,166,255,0.1);
+  border-bottom: 2px solid var(--blue);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.ex-table th.th-group-none {
+  background: rgba(139,148,158,0.08);
+  border-bottom: 2px solid var(--border);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+/* ── Column header row ── */
+.ex-table th.th-col {
+  background: var(--surf2);
+  padding: 0;
+  text-align: right;
+  font-weight: 700;
+  color: var(--blue);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-width: 90px;
+  user-select: none;
+}
+.ex-table th.th-col.sorted-asc  { color: var(--yellow); }
+.ex-table th.th-col.sorted-desc { color: var(--green); }
+.ex-table th.th-col.has-filter  { background: rgba(88,166,255,0.08); }
+
+.ex-table th.th-index {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-width: 32px;
+  width: 32px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 11px;
+  padding: 6px 4px;
+}
+.ex-table th.th-actions {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-width: 36px;
+  width: 36px;
+}
+
+/* Column header inner layout */
+.th-col-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 8px 4px;
+  gap: 3px;
+  cursor: pointer;
+}
+.th-col-top:hover { background: rgba(88,166,255,0.06); }
+.th-col-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.th-sort-icon {
+  font-size: 11px;
+  color: var(--dim);
+  flex-shrink: 0;
+  width: 12px;
+  text-align: center;
+}
+.th-col.sorted-asc  .th-sort-icon { color: var(--yellow); }
+.th-col.sorted-desc .th-sort-icon { color: var(--green); }
+.th-col-del {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  border-radius: 3px;
+}
+.th-col:hover .th-col-del { opacity: 1; }
+.th-col-del:hover { color: var(--red) !important; opacity: 1 !important; }
+
+/* Filter row inside th-col */
+.th-filter-row {
+  padding: 0 6px 5px;
+  position: relative;
+}
+.th-filter-select {
+  width: 100%;
+  background: var(--surf3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  padding: 3px 4px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.12s;
+}
+.th-filter-select:focus { border-color: var(--blue); }
+.th-filter-select.active { border-color: var(--blue); background: rgba(88,166,255,0.1); color: var(--blue); font-weight: 700; }
+
+/* Inline edit inputs for headers */
+.th-edit-input {
+  background: rgba(88,166,255,0.15);
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  width: 100%;
+  min-width: 60px;
+  outline: none;
+  padding: 2px 5px;
+  text-align: right;
+}
+.th-edit-input-group {
+  background: rgba(88,166,255,0.2);
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  color: white;
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  padding: 2px 6px;
+  text-align: center;
+  width: 120px;
+  max-width: 160px;
+}
+
+/* Group header controls */
+.th-group-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.th-group-name {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.12s;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.th-group-name:hover { background: rgba(255,255,255,0.1); }
+.th-group-add {
+  background: rgba(88,166,255,0.25);
+  border: none;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 1px 6px;
+  line-height: 1.4;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+.th-group-add:hover { background: rgba(88,166,255,0.5); }
+.th-group-del {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: 3px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.th-group-del:hover { color: var(--red); }
+
+/* Table data cells */
+.ex-table td {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  background: var(--surf);
+  vertical-align: middle;
+  transition: background 0.1s;
+}
+.ex-table tbody tr:hover td { background: var(--surf2); }
+.ex-table tbody tr.row-highlight td { background: rgba(88,166,255,0.06); }
+.ex-table td input {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  width: 100%;
+  min-width: 70px;
+  outline: none;
+  padding: 2px 0;
+  touch-action: manipulation;
+}
+.ex-table td input:focus {
+  background: rgba(88,166,255,0.07);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+.row-num {
+  color: var(--dim);
+  font-size: 11px;
+  text-align: center;
+  width: 32px;
+  padding: 7px 6px;
+}
+
+/* Table toolbar */
+.tbl-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.tbl-hint {
+  font-size: 11px;
+  color: var(--dim);
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+/* No results row */
+.tbl-no-results td {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+/* Mobile tweaks */
+@media (max-width: 520px) {
+  .tbl-hint { display: none; }
+  .tbl-toolbar { gap: 5px; }
+  .btn.sm { font-size: 13px; padding: 9px 12px; }
+  .ex-table td input { min-width: 55px; font-size: 12px; }
+  .ex-table td { padding: 7px 7px; }
+  .th-filter-select { font-size: 10px; }
+}
+
+/* ── ENGINEERING CALENDAR ── */
+.eng-cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.eng-ev-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  background: var(--surf2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-right: 3px solid;
+}
+.eng-ev-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.eng-ev-body { flex: 1; min-width: 0; }
+.eng-ev-title { font-size: 14px; font-weight: 600; }
+.eng-ev-meta { font-size: 12px; color: var(--dim); margin-top: 3px; line-height: 1.5; }
+.eng-ev-type-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--surf3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cal-cell.has-eng-ev::before {
+  content: '';
+  width: 5px; height: 5px;
+  background: var(--green);
+  border-radius: 50%;
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+}
+.cal-cell.has-both-ev::after { background: var(--yellow); }
+.sol-main-view-hidden { display: none !important; }
+
+@media (max-width: 520px) {
+  .eng-ev-item { padding: 9px 10px; gap: 8px; }
+  .eng-ev-title { font-size: 13px; }
+}
+
+/* ── ENG WEEK VIEW ── */
+.eng-week-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
+}
+.eng-week-grid {
+  display: grid;
+  grid-template-columns: 44px repeat(7, 1fr);
+  min-width: 500px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--surf);
+}
+.eng-week-header {
+  display: contents;
+}
+.eng-week-corner {
+  background: var(--surf2);
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  padding: 6px 0;
+}
+.eng-week-day-head {
+  background: var(--surf2);
+  border-bottom: 2px solid var(--border);
+  border-left: 1px solid var(--border);
+  padding: 6px 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.eng-week-day-head:active { background: var(--surf3); }
+.eng-week-day-head.today-col { border-bottom-color: var(--blue); }
+.eng-week-day-name { font-size: 10px; color: var(--dim); font-weight: 700; }
+.eng-week-day-num {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.eng-week-day-head.today-col .eng-week-day-num { color: var(--blue); }
+.eng-week-day-heb { font-size: 9px; color: var(--dim); }
+.eng-week-time-label {
+  background: var(--surf2);
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--dim);
+  text-align: center;
+  padding: 2px 0;
+  line-height: 28px;
+  height: 28px;
+}
+.eng-week-slot {
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  height: 28px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.eng-week-slot:hover { background: rgba(88,166,255,0.05); }
+.eng-week-ev {
+  position: absolute;
+  inset: 1px 1px 1px 1px;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: opacity 0.12s, transform 0.12s;
+}
+.eng-week-ev:active { opacity: 0.8; transform: scale(0.97); }
+.eng-week-allday-row {
+  display: contents;
+}
+.eng-week-allday-corner {
+  background: var(--surf2);
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  font-size: 9px;
+  color: var(--dim);
+  text-align: center;
+  padding: 3px 1px;
+  line-height: 1.3;
+}
+.eng-week-allday-cell {
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  min-height: 24px;
+  padding: 2px 2px;
+  background: var(--surf);
+}
+.eng-week-allday-ev {
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  margin-bottom: 1px;
+}
+.eng-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.eng-week-title { font-size: 15px; font-weight: 700; text-align: center; }
+.eng-view-seg {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.eng-view-seg-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 4px;
+  cursor: pointer;
+  border-left: 1px solid var(--border);
+  transition: all 0.15s;
+}
+.eng-view-seg-btn:last-child { border-left: none; }
+.eng-view-seg-btn.active { background: var(--blue); color: white; }
+
+/* Event edit/delete popup */
+.eng-ev-popup {
+  position: fixed;
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  z-index: 300;
+  min-width: 200px;
+  max-width: 260px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.eng-ev-popup-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.eng-ev-popup-meta { font-size: 11px; color: var(--dim); margin-bottom: 10px; line-height: 1.5; }
+.eng-ev-popup-btns { display: flex; gap: 6px; }
+.eng-ev-popup-btns button { flex: 1; }
+
+@media (max-width: 520px) {
+  .eng-week-grid { min-width: 360px; }
+  .eng-week-day-num { font-size: 13px; }
+  .eng-week-ev { font-size: 9px; }
+}
+
+/* ── ENG CAL LEGEND & FILTER ── */
+.eng-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+.eng-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surf2);
+  border-radius: 20px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid var(--border);
+}
+.eng-legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.eng-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+.eng-filter-btn {
+  background: var(--surf2);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  color: var(--dim);
+  font-family: 'Heebo', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.eng-filter-btn.active {
+  border-color: currentColor;
+  color: var(--text);
+  background: var(--surf3);
+}
+.eng-filter-btn.all-btn.active {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(88,166,255,0.1);
+}
+@media (max-width: 520px) {
+  .eng-filter-btn { font-size: 11px; padding: 5px 10px; }
+  .eng-legend-item { font-size: 11px; padding: 3px 8px 3px 5px; }
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  align-items: flex-end;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r) var(--r) 0 0;
+  padding: 20px 16px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+.modal-close { background: none; border: none; color: var(--dim); font-size: 22px; cursor: pointer; }
+
+/* ── EMPTY STATE ── */
+.empty { text-align: center; padding: 40px 20px; color: var(--dim); font-size: 14px; }
+.empty .e-icon { font-size: 36px; margin-bottom: 10px; }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.stat-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px;
+  text-align: center;
+}
+.stat-num { font-size: 26px; font-weight: 900; }
+.stat-label { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+/* ── SEGMENT ── */
+.segment { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+.seg-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 4px;
+  cursor: pointer;
+  border-left: 1px solid var(--border);
+  transition: all 0.15s;
+}
+.seg-btn:last-child { border-left: none; }
+.seg-btn.active { background: var(--blue); color: white; }
+
+/* ── FAB (Floating Action Button) ── */
+.fab {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 16px);
+  left: 16px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: none;
+  color: white;
+  font-size: 26px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(88,166,255,0.4);
+  z-index: 60;
+  transition: transform 0.15s;
+}
+.fab:active { transform: scale(0.92); }
+
+/* ── DIVIDER ── */
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* ── CLASS MGMT SECTION ── */
+.cls-mgmt-card {
+  background: var(--surf2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.cls-mgmt-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.cls-mgmt-title {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  min-width: 120px;
+}
+.cls-mgmt-select-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 2;
+  min-width: 180px;
+}
+.cls-ev-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surf);
+  border-radius: 8px;
+  margin-bottom: 7px;
+  border-right: 3px solid;
+}
+.cls-ev-body { flex: 1; min-width: 0; }
+.cls-ev-title { font-size: 14px; font-weight: 600; }
+.cls-ev-meta { font-size: 12px; color: var(--dim); margin-top: 2px; line-height: 1.5; }
+.cls-ev-actions { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+.cls-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cls-summary-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.cls-summary-num { font-size: 22px; font-weight: 900; }
+.cls-summary-label { font-size: 10px; color: var(--dim); margin-top: 2px; }
+.cls-filter-btn-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+/* Edit inline for class events */
+.cls-ev-edit-form {
+  background: var(--surf3);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.cls-ev-edit-form .form-row { margin-bottom: 6px; }
+.cls-ev-edit-form .row-btns { margin-top: 8px; }
+@media (max-width: 520px) {
+  .cls-mgmt-select-wrap { min-width: 120px; }
+  .cls-summary-grid { grid-template-columns: repeat(3, 1fr); }
+  .cls-summary-num { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<!-- PASSWORD SCREEN -->
+<div id="pw-screen" style="
+  position:fixed;inset:0;background:#0a0f06;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  font-family:'Heebo',sans-serif;direction:rtl;
+">
+  <div style="font-size:48px">🪖</div>
+  <div style="font-size:26px;font-weight:900;color:#4caf50;letter-spacing:-1px">מפקד</div>
+  <div style="font-size:13px;color:#556b2f">מערכת ניהול כיתה – חיל ההנדסה</div>
+  <div style="width:280px;display:flex;flex-direction:column;gap:10px;margin-top:10px">
+    <input id="pw-input" type="password" placeholder="סיסמה" style="
+      background:#1c2414;border:1px solid #2e3a1e;border-radius:10px;
+      color:#e6edf3;font-family:'Heebo',sans-serif;font-size:18px;
+      padding:14px 16px;text-align:center;outline:none;width:100%;
+      -webkit-appearance:none;letter-spacing:4px;
+    " onkeydown="if(event.key==='Enter')checkPW()">
+    <button onclick="checkPW()" style="
+      background:#4caf50;border:none;border-radius:10px;color:#fff;
+      font-family:'Heebo',sans-serif;font-size:16px;font-weight:700;
+      padding:14px;cursor:pointer;width:100%;
+    ">כניסה</button>
+    <div id="pw-error" style="color:#f85149;font-size:13px;text-align:center;min-height:18px"></div>
+  </div>
+</div>
+
+<div id="app">
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="logo">מפ<span>קד</span></div>
+  <div style="flex:1"></div>
+  <div class="date-info">
+    <div class="date-greg" id="date-greg"></div>
+    <div class="date-heb" id="date-heb"></div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ── TAB: HOME ── -->
+  <div id="tab-home" class="tab active">
+    <div class="sec-header">
+      <div class="sec-title">שלום 👋</div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-tasks" style="color:var(--blue)">0</div>
+        <div class="stat-label">משימות פתוחות</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-reqs" style="color:var(--yellow)">0</div>
+        <div class="stat-label">בקשות ממתינות</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-evs" style="color:var(--green)">0</div>
+        <div class="stat-label">אירועים השבוע</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">אירועים קרובים</div>
+      <div id="home-events"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">משימות דחופות</div>
+      <div id="home-tasks"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">בקשות ממתינות ללירן</div>
+      <div id="home-reqs"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CALENDAR ── -->
+  <div id="tab-cal" class="tab">
+    <div class="card">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="prevMonth()">›</button>
+        <div>
+          <div class="cal-month-title" id="cal-title"></div>
+          <div class="cal-sub" id="cal-heb-title"></div>
+        </div>
+        <button class="cal-nav-btn" onclick="nextMonth()">‹</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <button class="btn full" style="margin-bottom:12px" onclick="openModal('modal-add-event')">＋ הוסף אירוע</button>
+
+    <div class="card">
+      <div class="card-title" id="ev-card-title">כל האירועים</div>
+      <div id="ev-list"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: SOLDIERS ── -->
+  <div id="tab-soldiers" class="tab">
+    <div class="sec-header">
+      <div class="sec-title">🪖 חיילים</div>
+      <button class="btn sm ghost" onclick="openModal('modal-classes')">⚙ כיתות</button>
+    </div>
+
+    <!-- Main view selector -->
+    <div class="segment" id="sol-main-seg">
+      <button class="seg-btn active" onclick="setSolMainView('events')">אירועים</button>
+      <button class="seg-btn" onclick="setSolMainView('calendar')">📅 לוח שנה</button>
+    </div>
+
+    <!-- Events sub-view -->
+    <div id="sol-events-view">
+      <div class="segment">
+        <button class="seg-btn active" onclick="setSolView('schedule')">לוח זמנים</button>
+        <button class="seg-btn" onclick="setSolView('week')">השבוע</button>
+      </div>
+      <div id="sol-content"></div>
+    </div>
+
+    <!-- Engineering Calendar view -->
+    <div id="sol-cal-view" style="display:none">
+
+      <!-- Legend -->
+      <div class="eng-legend" id="eng-legend"></div>
+
+      <!-- Filter bar -->
+      <div class="eng-filter-bar" id="eng-filter-bar"></div>
+
+      <!-- View toggle: month / week -->
+      <div class="eng-view-seg">
+        <button class="eng-view-seg-btn active" id="eng-view-month-btn" onclick="setEngCalView('month')">📅 חודש</button>
+        <button class="eng-view-seg-btn" id="eng-view-week-btn" onclick="setEngCalView('week')">📋 שבוע</button>
+      </div>
+
+      <!-- MONTH VIEW -->
+      <div id="eng-month-view">
+        <div class="card">
+          <div class="eng-cal-nav">
+            <button class="cal-nav-btn" onclick="engPrevMonth()">›</button>
+            <div>
+              <div class="cal-month-title" id="eng-cal-title"></div>
+              <div class="cal-sub" id="eng-cal-heb-title"></div>
+            </div>
+            <button class="cal-nav-btn" onclick="engNextMonth()">‹</button>
+          </div>
+          <div class="cal-grid" id="eng-cal-grid"></div>
+        </div>
+
+        <!-- Selected day events -->
+        <div class="card" id="eng-ev-card" style="display:none">
+          <div class="card-title" id="eng-ev-card-title">אירועים</div>
+          <div id="eng-ev-list"></div>
+          <button class="btn full green" style="margin-top:10px" onclick="openEngAddEvent()">＋ הוסף אירוע ליום זה</button>
+        </div>
+
+        <!-- All upcoming events -->
+        <div class="card">
+          <div class="card-title">אירועי הנדסאים קרובים</div>
+          <div id="eng-upcoming-list"></div>
+        </div>
+      </div>
+
+      <!-- WEEK VIEW -->
+      <div id="eng-week-view" style="display:none">
+        <div class="eng-week-nav">
+          <button class="cal-nav-btn" onclick="engPrevWeek()">›</button>
+          <div class="eng-week-title" id="eng-week-title"></div>
+          <button class="cal-nav-btn" onclick="engNextWeek()">‹</button>
+        </div>
+        <div class="eng-week-wrap">
+          <div class="eng-week-grid" id="eng-week-grid"></div>
+        </div>
+        <button class="btn full green" style="margin-bottom:12px" onclick="openEngAddEvent()">＋ הוסף אירוע</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── TAB: TASKS ── -->
+  <div id="tab-tasks" class="tab">
+    <div class="sec-header">
+      <div class="sec-title">✅ משימות</div>
+    </div>
+    <div class="segment">
+      <button class="seg-btn active" onclick="setTaskFilter('all')">הכל</button>
+      <button class="seg-btn" onclick="setTaskFilter('pending')">פתוחות</button>
+      <button class="seg-btn" onclick="setTaskFilter('done')">הושלמו</button>
+    </div>
+    <div id="task-list"></div>
+  </div>
+
+  <!-- ── TAB: MORE ── -->
+  <div id="tab-more" class="tab">
+    <div class="sec-title" style="margin-bottom:14px">עוד</div>
+
+    <div class="card" style="cursor:pointer" onclick="openModal('modal-requests')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px">📋</div>
+        <div>
+          <div style="font-weight:700">בקשות מלירן</div>
+          <div style="font-size:13px;color:var(--dim)" id="req-count-label">0 ממתינות</div>
+        </div>
+        <div style="margin-right:auto;color:var(--dim);font-size:20px">‹</div>
+      </div>
+    </div>
+
+    <div class="card" style="cursor:pointer" onclick="openModal('modal-table')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px">📊</div>
+        <div>
+          <div style="font-weight:700">טבלת הנדסאים</div>
+          <div style="font-size:13px;color:var(--dim)" id="tbl-count-label">0 שורות</div>
+        </div>
+        <div style="margin-right:auto;color:var(--dim);font-size:20px">‹</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- FAB -->
+<button class="fab" id="fab-btn" onclick="onFAB()">+</button>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="goTab('home')">
+    <span class="icon">🏠</span><span>בית</span><span class="nav-pip"></span>
+  </button>
+  <button class="nav-btn" onclick="goTab('cal')">
+    <span class="icon">📅</span><span>לוח שנה</span><span class="nav-pip"></span>
+  </button>
+  <button class="nav-btn" onclick="goTab('soldiers')">
+    <span class="icon">🪖</span><span>חיילים</span><span class="nav-pip"></span>
+  </button>
+  <button class="nav-btn" onclick="goTab('tasks')">
+    <span class="icon">✅</span><span>משימות</span><span class="nav-pip"></span>
+  </button>
+  <button class="nav-btn" onclick="goTab('more')">
+    <span class="icon">⋯</span><span>עוד</span><span class="nav-pip"></span>
+  </button>
+</nav>
+
+</div><!-- /app -->
+
+<!-- =================== MODALS =================== -->
+
+<!-- ADD EVENT -->
+<div class="modal-overlay" id="modal-add-event">
+  <div class="modal">
+    <div class="modal-title">הוספת אירוע <button class="modal-close" onclick="closeModal('modal-add-event')">×</button></div>
+    <div class="form-row"><label>כותרת האירוע</label><input type="text" id="ev-text" placeholder="מה יש?"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1"><label style="font-size:12px;color:var(--dim);font-weight:600;display:block;margin-bottom:6px">תאריך</label><input type="date" id="ev-date"></div>
+      <div style="flex:1"><label style="font-size:12px;color:var(--dim);font-weight:600;display:block;margin-bottom:6px">שעה (אופציונלי)</label><input type="time" id="ev-time"></div>
+    </div>
+    <div class="form-row"><label>הערה (אופציונלי)</label><textarea id="ev-note" placeholder="פרטים נוספים, מיקום, הכנות..."></textarea></div>
+    <div class="form-row"><label>סוג / צבע</label>
+      <select id="ev-color">
+        <option value="#58a6ff">🔵 אישי</option>
+        <option value="#e3b341">🟡 חיילים</option>
+        <option value="#3fb950">🟢 פגישה</option>
+        <option value="#f85149">🔴 דדליין</option>
+        <option value="#a371f7">🟣 אחר</option>
+      </select>
+    </div>
+    <button class="btn full" onclick="addEvent()">הוסף אירוע</button>
+  </div>
+</div>
+
+<!-- ADD SOLDIER EVENT -->
+<div class="modal-overlay" id="modal-add-sol">
+  <div class="modal">
+    <div class="modal-title">אירוע חיילים <button class="modal-close" onclick="closeModal('modal-add-sol')">×</button></div>
+    <div class="form-row"><label>תאריך</label><input type="date" id="sol-date"></div>
+    <div class="form-row"><label>כיתה</label>
+      <select id="sol-class-sel">
+        <option value="">-- בחר כיתה --</option>
+      </select>
+    </div>
+    <div class="form-row"><label>סוג אירוע</label>
+      <select id="sol-type">
+        <option value="training">🔵 יום הכשרה</option>
+        <option value="fun">🟡 יום כיף</option>
+        <option value="unit">🟢 יחידה</option>
+        <option value="test">🔴 מבחן</option>
+        <option value="other">⚪ אחר</option>
+      </select>
+    </div>
+    <div class="form-row"><label>פירוט (אופציונלי)</label><input type="text" id="sol-desc" placeholder="פרטים נוספים..."></div>
+    <button class="btn full" onclick="addSolEvent()">הוסף</button>
+  </div>
+</div>
+
+<!-- ADD TASK -->
+<div class="modal-overlay" id="modal-add-task">
+  <div class="modal">
+    <div class="modal-title">משימה חדשה <button class="modal-close" onclick="closeModal('modal-add-task')">×</button></div>
+    <div class="form-row"><label>תיאור המשימה</label><textarea id="task-text" placeholder="מה צריך לעשות?"></textarea></div>
+    <div class="form-row"><label>עדיפות</label>
+      <select id="task-pri">
+        <option value="high">🔴 גבוה – דחוף</option>
+        <option value="mid" selected>🟡 בינוני</option>
+        <option value="low">🟢 נמוך</option>
+      </select>
+    </div>
+    <button class="btn full" onclick="addTask()">הוסף משימה</button>
+  </div>
+</div>
+
+<!-- MANAGE CLASSES -->
+<div class="modal-overlay" id="modal-classes">
+  <div class="modal">
+    <div class="modal-title">ניהול כיתות <button class="modal-close" onclick="closeModal('modal-classes')">×</button></div>
+    <div id="classes-list" style="margin-bottom:14px"></div>
+    <div class="divider"></div>
+    <div class="form-row"><label>שם הכיתה / מסלול</label><input type="text" id="class-name" placeholder="לדוג׳ כיתה א׳ – ממ"מ"></div>
+    <div class="form-row"><label>צבע</label>
+      <select id="class-color">
+        <option value="#58a6ff">כחול</option>
+        <option value="#3fb950">ירוק</option>
+        <option value="#e3b341">צהוב</option>
+        <option value="#f85149">אדום</option>
+        <option value="#a371f7">סגול</option>
+        <option value="#f78166">כתום</option>
+        <option value="#56d364">ירוק בהיר</option>
+        <option value="#e99bff">ורוד</option>
+      </select>
+    </div>
+    <button class="btn full green" onclick="addClass()">הוסף כיתה</button>
+  </div>
+</div>
+
+<!-- REQUESTS MODAL -->
+<div class="modal-overlay" id="modal-requests">
+  <div class="modal">
+    <div class="modal-title">📋 בקשות מלירן <button class="modal-close" onclick="closeModal('modal-requests')">×</button></div>
+
+    <div style="margin-bottom:14px">
+      <div class="form-row"><label>בקשה חדשה</label><input type="text" id="req-text" placeholder="מה לבקש?"></div>
+      <div class="form-row"><label>תאריך יעד (אופציונלי)</label><input type="date" id="req-due"></div>
+      <button class="btn full yellow" onclick="addRequest()">+ הוסף בקשה</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="segment">
+      <button class="seg-btn active" onclick="setReqFilter('pending')">ממתינות</button>
+      <button class="seg-btn" onclick="setReqFilter('done')">בוצעו</button>
+    </div>
+    <div id="req-list"></div>
+  </div>
+</div>
+
+<!-- TABLE MODAL -->
+<div class="modal-overlay" id="modal-table">
+  <div class="modal" style="max-height:95vh;padding-left:12px;padding-right:12px">
+    <div class="modal-title">📊 טבלת הנדסאים <button class="modal-close" onclick="closeModal('modal-table')">×</button></div>
+
+    <!-- ── CLASS MANAGEMENT SECTION ── -->
+    <div class="cls-mgmt-card">
+      <div class="cls-mgmt-header">
+        <div class="cls-mgmt-title">🏫 ניהול כיתה</div>
+        <div class="cls-mgmt-select-wrap">
+          <select id="cls-mgmt-sel" style="flex:1" onchange="onClsMgmtSelect(this.value)">
+            <option value="">-- בחר כיתה --</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Summary (shown when class selected) -->
+      <div id="cls-mgmt-body" style="display:none">
+        <div class="cls-summary-grid">
+          <div class="cls-summary-card">
+            <div class="cls-summary-num" id="cls-sum-total" style="color:var(--blue)">0</div>
+            <div class="cls-summary-label">סה"כ אירועים</div>
+          </div>
+          <div class="cls-summary-card">
+            <div class="cls-summary-num" id="cls-sum-first" style="color:var(--green);font-size:13px;line-height:1.3;padding-top:4px">—</div>
+            <div class="cls-summary-label">תאריך ראשון</div>
+          </div>
+          <div class="cls-summary-card">
+            <div class="cls-summary-num" id="cls-sum-last" style="color:var(--yellow);font-size:13px;line-height:1.3;padding-top:4px">—</div>
+            <div class="cls-summary-label">תאריך אחרון</div>
+          </div>
+        </div>
+
+        <!-- Filter button -->
+        <div class="cls-filter-btn-wrap">
+          <button class="btn sm" style="background:var(--purple)" onclick="filterTableBySelectedClass()">🔍 סנן טבלה לפי כיתה זו</button>
+        </div>
+
+        <!-- Edit form (hidden by default) -->
+        <div id="cls-ev-edit-form" class="cls-ev-edit-form" style="display:none">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--blue)">✏ עריכת אירוע</div>
+          <div class="form-row"><label>תאריך</label><input type="date" id="cls-edit-date"></div>
+          <div class="form-row"><label>שעה (אופציונלי)</label><input type="time" id="cls-edit-time"></div>
+          <div class="form-row"><label>סוג אירוע</label>
+            <select id="cls-edit-type">
+              <option value="mechina">🏫 מכינה</option>
+              <option value="fun">🎉 יום כיף</option>
+              <option value="course">📚 קורס</option>
+              <option value="other">⚙ אחר</option>
+            </select>
+          </div>
+          <div class="form-row"><label>כותרת</label><input type="text" id="cls-edit-title" placeholder="כותרת האירוע..."></div>
+          <div class="form-row"><label>הערה</label><input type="text" id="cls-edit-note" placeholder="הערה..."></div>
+          <div class="row-btns">
+            <button class="btn green" onclick="saveClsEvEdit()">💾 שמור</button>
+            <button class="btn ghost" onclick="cancelClsEvEdit()">ביטול</button>
+          </div>
+        </div>
+
+        <!-- Events list -->
+        <div id="cls-ev-list"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="cls-mgmt-empty" style="color:var(--dim);font-size:13px;text-align:center;padding:10px 0">בחר כיתה כדי לראות את האירועים שלה</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Toolbar -->
+    <div class="tbl-toolbar">
+      <button class="btn sm green" onclick="addTableRow()">＋ שורה</button>
+      <button class="btn sm" style="background:var(--purple)" onclick="addTableCol(null)">＋ עמודה</button>
+      <button class="btn sm yellow" onclick="addTableGroup()" style="color:#0d1117">＋ קבוצה</button>
+      <button class="btn sm ghost" onclick="exportCSV()">⬇ ייצוא Excel</button>
+      <label class="btn sm ghost" style="cursor:pointer" title="ייבוא CSV">
+        ⬆ ייבוא CSV
+        <input type="file" accept=".csv" style="display:none" onchange="importCSV(this)">
+      </label>
+      <span class="tbl-hint">לחץ פעמיים על כותרת לעריכה</span>
+    </div>
+
+    <!-- Search -->
+    <div class="tbl-search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="tbl-search" id="tbl-search-input" type="text" placeholder="חיפוש חופשי בכל התאים..."
+        oninput="onTblSearch(this.value)">
+      <button class="tbl-search-clear" id="tbl-search-clear" onclick="clearTblSearch()" title="נקה חיפוש">×</button>
+    </div>
+
+    <!-- Stats & active filters -->
+    <div class="tbl-stats">
+      <span>מציג <span class="tbl-count" id="tbl-visible-count">0</span> מתוך <span class="tbl-count" id="tbl-total-count">0</span> שורות</span>
+      <div class="tbl-active-filters" id="tbl-active-filters"></div>
+      <button id="tbl-clear-all-btn" onclick="clearAllFilters()" style="display:none;background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);font-family:Heebo,sans-serif;font-size:11px;padding:2px 8px;cursor:pointer">נקה הכל</button>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+      <table class="ex-table">
+        <thead id="tbl-head"></thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ENG CAL ADD EVENT MODAL -->
+<div class="modal-overlay" id="modal-eng-add-event">
+  <div class="modal">
+    <div class="modal-title">📅 הוספת אירוע הנדסאים <button class="modal-close" onclick="closeModal('modal-eng-add-event')">×</button></div>
+
+    <div class="form-row">
+      <label>תאריך</label>
+      <input type="date" id="eng-ev-date">
+    </div>
+    <div class="form-row">
+      <label>שעה (אופציונלי)</label>
+      <input type="time" id="eng-ev-time">
+    </div>
+    <div class="form-row">
+      <label>כותרת *</label>
+      <input type="text" id="eng-ev-title" placeholder="כותרת האירוע...">
+    </div>
+    <div class="form-row">
+      <label>כיתה</label>
+      <select id="eng-ev-class">
+        <option value="">כל הכיתות</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>מסלול</label>
+      <input type="text" id="eng-ev-track" placeholder="לדוגמה: ממ׳׳מ, ת׳׳ש...">
+    </div>
+    <div class="form-row">
+      <label>סוג אירוע</label>
+      <select id="eng-ev-type">
+        <option value="mechina">🏫 מכינה</option>
+        <option value="fun">🎉 יום כיף</option>
+        <option value="course">📚 קורס</option>
+        <option value="other">⚙ אחר</option>
+      </select>
+    </div>
+
+    <button class="btn full" onclick="addEngEvent()">הוסף אירוע</button>
+  </div>
+</div>
+
+<!-- =================== SCRIPT =================== -->
+<script>
+// ======= STATE =======
+const defaultState = {
+  events: [],
+  solEvents: [],
+  tasks: [],
+  requests: [],
+  tableRows: [],
+  tableColumns: [
+    { id: 1, name: 'מסלול' }, { id: 2, name: 'כיתה' }, { id: 3, name: 'מכללה' },
+    { id: 4, name: 'מחזור גיוס' }, { id: 5, name: 'כמות חיילים' },
+    { id: 6, name: 'פתיחת מכינה' }, { id: 7, name: 'סיום מכינה' },
+    { id: 8, name: 'סיום לימודים' }, { id: 9, name: 'צפי שחרור' }, { id: 10, name: 'הערות' }
+  ],
+  tableGroups: [
+    { id: 1, name: 'פרטי מסלול', colIds: [1,2,3,4,5] },
+    { id: 2, name: 'תאריכים', colIds: [6,7,8,9] },
+    { id: 3, name: 'הערות', colIds: [10] }
+  ],
+  classes: [
+    { id: 1, name: 'כיתה א׳', color: '#58a6ff' },
+    { id: 2, name: 'כיתה ב׳', color: '#3fb950' },
+    { id: 3, name: 'כיתה ג׳', color: '#e3b341' },
+  ],
+  calYear: new Date().getFullYear(),
+  calMonth: new Date().getMonth(),
+};
+
+// ── Engineering calendar – separate localStorage key ──
+const ENG_STORAGE_KEY = 'mifkad2_eng_cal';
+let engCal = {
+  events: [],
+  year:   new Date().getFullYear(),
+  month:  new Date().getMonth(),
+};
+
+function saveEngCal() {
+  try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
+  clearTimeout(window._engSaveTimer);
+  window._engSaveTimer = setTimeout(() => {
+    if (window.fbSave) window.fbSave('engCal', engCal).catch(()=>{});
+  }, 800);
+}
+function loadEngCal() {
+  try {
+    const d = localStorage.getItem(ENG_STORAGE_KEY);
+    if (d) engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, JSON.parse(d));
+  } catch(e) {}
+}
+async function loadEngCalFromFirebase() {
+  if (!window.fbLoad) return;
+  try {
+    const remote = await window.fbLoad('engCal', null);
+    if (remote) {
+      engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, remote);
+      try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
+    }
+  } catch(e) {}
+}
+
+let S = Object.assign({}, defaultState);
+
+// ── Firebase save/load ──
+let _saveTimer = null;
+function save() {
+  // Still keep localStorage as fallback
+  try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+  // Debounced Firebase save
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (window.fbSave) window.fbSave('state', S).catch(()=>{});
+  }, 800);
+}
+
+function load() {
+  try {
+    const d = localStorage.getItem('mifkad2');
+    if (d) S = Object.assign({}, defaultState, JSON.parse(d));
+  } catch(e) {}
+}
+
+async function loadFromFirebase() {
+  if (!window.fbLoad) return;
+  try {
+    const remote = await window.fbLoad('state', null);
+    if (remote) {
+      S = Object.assign({}, defaultState, remote);
+      try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+    }
+  } catch(e) { console.warn('Firebase load error', e); }
+}
+
+// ======= TABS =======
+let currentTab = 'home';
+function goTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const idx = ['home','cal','soldiers','tasks','more'].indexOf(name);
+  document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  currentTab = name;
+  renderAll();
+}
+
+// ======= FAB =======
+function onFAB() {
+  if (currentTab === 'soldiers' && solMainView === 'calendar') {
+    openEngAddEvent();
+    return;
+  }
+  const map = { home:'modal-add-event', cal:'modal-add-event', soldiers:'modal-add-sol', tasks:'modal-add-task', more:'modal-requests' };
+  openModal(map[currentTab] || 'modal-add-event');
+}
+
+// ======= MODALS =======
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id === 'modal-add-sol') refreshClassSel();
+  if (id === 'modal-classes') renderClassesList();
+  if (id === 'modal-requests') renderRequests();
+  if (id === 'modal-table') { renderTable(); initClsMgmtSelect(); }
+  // set today on date fields (only if empty)
+  const todayStr = new Date().toISOString().split('T')[0];
+  document.querySelectorAll('#' + id + ' input[type="date"]').forEach(el => { if (!el.value) el.value = todayStr; });
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  renderAll();
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); renderAll(); });
+});
+
+// ======= DATE UTILS =======
+function today() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(s) {
+  if (!s) return '';
+  const [y,m,d] = s.split('-');
+  return `${d}/${m}/${y}`;
+}
+function hebrewDate(d) {
+  try { return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day:'numeric', month:'long' }).format(d); }
+  catch(e) { return ''; }
+}
+function hebDayNum(d) {
+  try { return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day:'numeric' }).format(d); }
+  catch(e) { return ''; }
+}
+function hebMonthYear(d) {
+  try { return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month:'long', year:'numeric' }).format(d); }
+  catch(e) { return ''; }
+}
+function isThisWeek(s) {
+  const d = new Date(s + 'T00:00:00');
+  const now = new Date();
+  const startW = new Date(now); startW.setDate(now.getDate() - now.getDay());
+  const endW = new Date(startW); endW.setDate(startW.getDate() + 7);
+  return d >= startW && d < endW;
+}
+
+// ======= HEADER DATE =======
+function updateHeaderDate() {
+  const now = new Date();
+  document.getElementById('date-greg').textContent = now.toLocaleDateString('he-IL', { weekday:'short', day:'numeric', month:'long' });
+  document.getElementById('date-heb').textContent = hebrewDate(now);
+}
+
+// ======= CALENDAR =======
+const MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const DAYS = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+
+function prevMonth() { S.calMonth--; if (S.calMonth < 0) { S.calMonth = 11; S.calYear--; } renderCalendar(); }
+function nextMonth() { S.calMonth++; if (S.calMonth > 11) { S.calMonth = 0; S.calYear++; } renderCalendar(); }
+
+let selectedDate = null;
+
+function renderCalendar() {
+  const y = S.calYear, m = S.calMonth;
+  document.getElementById('cal-title').textContent = MONTHS[m] + ' ' + y;
+  document.getElementById('cal-heb-title').textContent = hebMonthYear(new Date(y, m, 1));
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  DAYS.forEach(d => { const el = document.createElement('div'); el.className = 'cal-dname'; el.textContent = d; grid.appendChild(el); });
+
+  const firstDay = new Date(y, m, 1).getDay();
+  for (let i = 0; i < firstDay; i++) { const b = document.createElement('div'); grid.appendChild(b); }
+
+  const dim = new Date(y, m+1, 0).getDate();
+  const todayStr = today();
+  const evDates = new Set(S.events.map(e => e.date));
+
+  for (let d = 1; d <= dim; d++) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    if (dateStr === todayStr) cell.classList.add('today');
+    if (evDates.has(dateStr)) cell.classList.add('has-ev');
+    if (dateStr === selectedDate) cell.style.borderColor = 'var(--blue)';
+    cell.innerHTML = `<div>${d}</div><div class="hday">${hebDayNum(new Date(y,m,d))}</div>`;
+    cell.onclick = () => { selectedDate = dateStr; renderCalendar(); renderEvList(); };
+    grid.appendChild(cell);
+  }
+  renderEvList();
+}
+
+function renderEvList() {
+  const list = document.getElementById('ev-list');
+  const title = document.getElementById('ev-card-title');
+  let evs = [...S.events].sort((a,b) => a.date.localeCompare(b.date));
+  if (selectedDate) {
+    const sel = evs.filter(e => e.date === selectedDate);
+    title.textContent = sel.length ? `אירועים ב-${fmtDate(selectedDate)}` : `${fmtDate(selectedDate)} – אין אירועים`;
+    evs = sel;
+  } else {
+    title.textContent = 'כל האירועים';
+    evs = evs.slice(0, 15);
+  }
+  if (!evs.length) { list.innerHTML = '<div class="empty"><div class="e-icon">📭</div>אין אירועים</div>'; return; }
+  list.innerHTML = evs.map(e => `
+    <div class="ev-item" style="align-items:flex-start">
+      <div class="ev-dot" style="background:${e.color};margin-top:4px;flex-shrink:0"></div>
+      <div class="ev-body">
+        <div class="ev-title">${e.text}</div>
+        <div class="ev-meta">${fmtDate(e.date)}${e.time ? ' · ' + e.time : ''} · ${hebrewDate(new Date(e.date + 'T00:00:00'))}</div>
+        ${e.note ? `<div style="font-size:12px;color:var(--dim);margin-top:4px;line-height:1.5">${e.note}</div>` : ''}
+      </div>
+      <button class="del-btn" onclick="delEvent(${e.id})">×</button>
+    </div>
+  `).join('');
+}
+
+function addEvent() {
+  const date = document.getElementById('ev-date').value;
+  const text = document.getElementById('ev-text').value.trim();
+  const time = document.getElementById('ev-time').value;
+  const note = document.getElementById('ev-note').value.trim();
+  const color = document.getElementById('ev-color').value;
+  if (!date || !text) { alert('מלא לפחות תאריך וכותרת'); return; }
+  S.events.push({ id: Date.now(), date, text, time, note, color });
+  document.getElementById('ev-text').value = '';
+  document.getElementById('ev-time').value = '';
+  document.getElementById('ev-note').value = '';
+  save(); closeModal('modal-add-event'); renderAll();
+}
+function delEvent(id) { S.events = S.events.filter(e => e.id !== id); save(); renderAll(); }
+
+// ======= CLASSES =======
+function refreshClassSel() {
+  const sel = document.getElementById('sol-class-sel');
+  sel.innerHTML = '<option value="">-- בחר כיתה --</option>' +
+    S.classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+function renderClassesList() {
+  document.getElementById('classes-list').innerHTML = S.classes.length
+    ? S.classes.map(c => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="width:14px;height:14px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
+          <span style="flex:1;font-size:14px">${c.name}</span>
+          <button class="del-btn" onclick="delClass(${c.id})">×</button>
+        </div>`).join('')
+    : '<div class="empty">אין כיתות עדיין</div>';
+}
+function addClass() {
+  const name = document.getElementById('class-name').value.trim();
+  if (!name) return;
+  // Auto-assign color: use selected or auto-pick unused palette color
+  const colorSel = document.getElementById('class-color').value;
+  const usedColors = new Set(S.classes.map(c => c.color));
+  let color = colorSel;
+  if (!color || usedColors.has(color)) {
+    const avail = CLASS_PALETTE.filter(c => !usedColors.has(c));
+    color = avail.length ? avail[0] : CLASS_PALETTE[S.classes.length % CLASS_PALETTE.length];
+  }
+  S.classes.push({ id: Date.now(), name, color });
+  document.getElementById('class-name').value = '';
+  save(); renderClassesList(); renderEngLegendFilter();
+}
+function delClass(id) {
+  S.classes = S.classes.filter(c => c.id !== id);
+  save(); renderClassesList();
+}
+
+// ======= SOLDIER EVENTS =======
+let solView = 'schedule';
+function setSolView(v) {
+  solView = v;
+  document.querySelectorAll('#tab-soldiers .seg-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&v==='schedule')||(i===1&&v==='week')));
+  renderSoldiers();
+}
+
+function addSolEvent() {
+  const date = document.getElementById('sol-date').value;
+  const classId = parseInt(document.getElementById('sol-class-sel').value);
+  const type = document.getElementById('sol-type').value;
+  const desc = document.getElementById('sol-desc').value.trim();
+  if (!date || !classId) { alert('בחר תאריך וכיתה'); return; }
+  S.solEvents.push({ id: Date.now(), date, classId, type, desc });
+  document.getElementById('sol-desc').value = '';
+  save(); closeModal('modal-add-sol'); renderAll();
+}
+function delSolEvent(id) { S.solEvents = S.solEvents.filter(e => e.id !== id); save(); renderSoldiers(); }
+
+const SOL_TYPES = {
+  training: { label:'הכשרה', color:'#58a6ff' },
+  fun:      { label:'יום כיף', color:'#e3b341' },
+  unit:     { label:'יחידה', color:'#3fb950' },
+  test:     { label:'מבחן', color:'#f85149' },
+  other:    { label:'אחר', color:'#8b949e' },
+};
+
+function renderSoldiers() {
+  const con = document.getElementById('sol-content');
+  let evs = [...S.solEvents].sort((a,b) => a.date.localeCompare(b.date));
+  if (solView === 'week') evs = evs.filter(e => isThisWeek(e.date));
+  if (!evs.length) { con.innerHTML = '<div class="empty"><div class="e-icon">🪖</div>' + (solView==='week'?'אין אירועים השבוע':'אין אירועים. לחץ + להוסיף') + '</div>'; return; }
+  const byDate = {};
+  evs.forEach(e => { if (!byDate[e.date]) byDate[e.date] = []; byDate[e.date].push(e); });
+  con.innerHTML = Object.entries(byDate).map(([date, evArr]) => `
+    <div class="sol-date-block">
+      <div class="sol-date-label">${fmtDate(date)} · ${hebrewDate(new Date(date+'T00:00:00'))}</div>
+      ${evArr.map(e => {
+        const cls = S.classes.find(c => c.id === e.classId);
+        const t = SOL_TYPES[e.type] || SOL_TYPES.other;
+        return `<div class="sol-ev" style="border-right-color:${cls?.color||'#8b949e'}">
+          <span class="class-tag" style="color:${cls?.color||'var(--dim)'}">${cls?.name||'?'}</span>
+          <span class="sol-desc">${e.desc || t.label}</span>
+          <span class="ev-type-chip" style="color:${t.color}">${t.label}</span>
+          <button class="del-btn" onclick="delSolEvent(${e.id})">×</button>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+// ======= TASKS =======
+let taskFilter = 'all';
+function setTaskFilter(f) {
+  taskFilter = f;
+  document.querySelectorAll('#tab-tasks .seg-btn').forEach((b,i) => b.classList.toggle('active', ['all','pending','done'][i]===f));
+  renderTasks();
+}
+
+function addTask() {
+  const text = document.getElementById('task-text').value.trim();
+  const pri = document.getElementById('task-pri').value;
+  if (!text) return;
+  S.tasks.push({ id: Date.now(), text, pri, done: false });
+  document.getElementById('task-text').value = '';
+  save(); closeModal('modal-add-task'); renderAll();
+}
+function toggleTask(id) { const t = S.tasks.find(t=>t.id===id); if(t) t.done=!t.done; save(); renderTasks(); renderHome(); }
+function delTask(id) { S.tasks = S.tasks.filter(t=>t.id!==id); save(); renderTasks(); renderHome(); }
+
+const PRI = { high:{label:'גבוה',cls:'p-high'}, mid:{label:'בינוני',cls:'p-mid'}, low:{label:'נמוך',cls:'p-low'} };
+
+function renderTasks() {
+  let items = [...S.tasks];
+  const priOrder = {high:0,mid:1,low:2};
+  items.sort((a,b) => priOrder[a.pri]-priOrder[b.pri]);
+  if (taskFilter === 'pending') items = items.filter(t => !t.done);
+  else if (taskFilter === 'done') items = items.filter(t => t.done);
+  const list = document.getElementById('task-list');
+  if (!items.length) { list.innerHTML = '<div class="empty"><div class="e-icon">✅</div>אין משימות</div>'; return; }
+  list.innerHTML = items.map(t => `
+    <div class="task-item ${t.done?'done':''}">
+      <input type="checkbox" class="task-cb" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
+      <div class="task-body">
+        <div class="task-label">${t.text}</div>
+        <span class="task-badge ${PRI[t.pri].cls}">${PRI[t.pri].label}</span>
+      </div>
+      <button class="del-btn" onclick="delTask(${t.id})">×</button>
+    </div>
+  `).join('');
+}
+
+// ======= REQUESTS =======
+let reqFilter = 'pending';
+function setReqFilter(f) {
+  reqFilter = f;
+  document.querySelectorAll('#modal-requests .seg-btn').forEach((b,i) => b.classList.toggle('active', ['pending','done'][i]===f));
+  renderRequests();
+}
+
+function addRequest() {
+  const text = document.getElementById('req-text').value.trim();
+  const due = document.getElementById('req-due').value;
+  if (!text) return;
+  S.requests.push({ id: Date.now(), text, due, done: false });
+  document.getElementById('req-text').value = '';
+  save(); renderRequests(); renderHome();
+}
+function toggleRequest(id) { const r = S.requests.find(r=>r.id===id); if(r) r.done=!r.done; save(); renderRequests(); renderHome(); }
+function delRequest(id) { S.requests = S.requests.filter(r=>r.id!==id); save(); renderRequests(); renderHome(); }
+
+function renderRequests() {
+  let items = S.requests.filter(r => reqFilter==='done' ? r.done : !r.done);
+  const list = document.getElementById('req-list');
+  if (!list) return;
+  if (!items.length) { list.innerHTML = `<div class="empty"><div class="e-icon">📭</div>אין בקשות ${reqFilter==='done'?'שבוצעו':'ממתינות'}</div>`; return; }
+  list.innerHTML = items.map(r => `
+    <div class="req-item">
+      <div class="req-dot" style="background:${r.done?'var(--green)':'var(--yellow)'}"></div>
+      <div class="req-body">
+        <div class="req-text">${r.text}</div>
+        ${r.due ? `<div class="req-due">עד ${fmtDate(r.due)}</div>` : ''}
+      </div>
+      <button class="req-done-btn ${r.done?'active':''}" onclick="toggleRequest(${r.id})">${r.done?'בטל':'בוצע'}</button>
+      <button class="del-btn" onclick="delRequest(${r.id})">×</button>
+    </div>
+  `).join('');
+  // update labels
+  const pending = S.requests.filter(r=>!r.done).length;
+  const el = document.getElementById('req-count-label');
+  if (el) el.textContent = pending + ' ממתינות';
+}
+
+// ======= ENGINEERING CALENDAR =======
+
+const ENG_CAL_TYPES = {
+  mechina: { label: 'מכינה',   color: '#58a6ff' },
+  fun:     { label: 'יום כיף', color: '#e3b341' },
+  course:  { label: 'קורס',    color: '#3fb950' },
+  other:   { label: 'אחר',     color: '#8b949e' },
+};
+
+let solMainView    = 'events';   // 'events' | 'calendar'
+let engSelDate     = null;
+let engClassFilter = null;       // null = all, or classId number
+let engCalView     = 'month';    // 'month' | 'week'
+let engWeekStart   = null;       // Monday date string of current week
+
+/* ── Auto-assign colors to classes ── */
+const CLASS_PALETTE = [
+  '#58a6ff','#3fb950','#e3b341','#f85149','#a371f7',
+  '#f78166','#56d364','#e99bff','#79c0ff','#ffa657',
+  '#ff7b72','#d2a8ff','#7ee787','#ffc680'
+];
+function ensureClassColors() {
+  const usedColors = new Set(S.classes.filter(c => c.color).map(c => c.color));
+  S.classes.forEach((cls, i) => {
+    if (!cls.color) {
+      const available = CLASS_PALETTE.filter(c => !usedColors.has(c));
+      const picked = available.length ? available[0] : CLASS_PALETTE[i % CLASS_PALETTE.length];
+      cls.color = picked;
+      usedColors.add(picked);
+    }
+  });
+}
+
+/* ── Week helpers ── */
+function getWeekStartDate(dateStr) {
+  // Returns Sunday-based week start (Sunday=0)
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - day);
+  return d.toISOString().split('T')[0];
+}
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+function initWeekStart() {
+  if (!engWeekStart) engWeekStart = getWeekStartDate(today());
+}
+
+/* ── setSolMainView ── */
+function setSolMainView(v) {
+  solMainView = v;
+  const btns = document.querySelectorAll('#sol-main-seg .seg-btn');
+  btns.forEach((b, i) => b.classList.toggle('active', (i === 0 && v === 'events') || (i === 1 && v === 'calendar')));
+  document.getElementById('sol-events-view').style.display = v === 'events' ? '' : 'none';
+  document.getElementById('sol-cal-view').style.display    = v === 'calendar' ? '' : 'none';
+  if (v === 'calendar') { renderEngLegendFilter(); renderEngCalendar(); }
+}
+
+/* ── Calendar view toggle: month / week ── */
+function setEngCalView(view) {
+  engCalView = view;
+  const mBtn = document.getElementById('eng-view-month-btn');
+  const wBtn = document.getElementById('eng-view-week-btn');
+  if (mBtn) mBtn.classList.toggle('active', view === 'month');
+  if (wBtn) wBtn.classList.toggle('active', view === 'week');
+  const mView = document.getElementById('eng-month-view');
+  const wView = document.getElementById('eng-week-view');
+  if (mView) mView.style.display = view === 'month' ? '' : 'none';
+  if (wView) wView.style.display = view === 'week' ? '' : 'none';
+  renderEngCalendar();
+}
+
+/* ── Legend + Filter render ── */
+function renderEngLegendFilter() {
+  ensureClassColors();
+  const legendEl = document.getElementById('eng-legend');
+  const filterEl = document.getElementById('eng-filter-bar');
+  if (!legendEl || !filterEl) return;
+  const classes = S.classes;
+  if (!classes.length) { legendEl.innerHTML = ''; filterEl.innerHTML = ''; return; }
+  legendEl.innerHTML = '<span style="font-size:11px;color:var(--dim);font-weight:700;margin-left:4px">מקרא:</span>' +
+    classes.map(c =>
+      '<span class="eng-legend-item"><span class="eng-legend-dot" style="background:' + c.color + '"></span>' + c.name + '</span>'
+    ).join('');
+  filterEl.innerHTML =
+    '<button class="eng-filter-btn all-btn' + (engClassFilter === null ? ' active' : '') + '" onclick="setEngFilter(null)">הכל</button>' +
+    classes.map(c =>
+      '<button class="eng-filter-btn' + (engClassFilter === c.id ? ' active' : '') + '" ' +
+      'style="' + (engClassFilter === c.id ? 'border-color:' + c.color + ';color:' + c.color + ';background:' + c.color + '22' : '') + '" ' +
+      'onclick="setEngFilter(' + c.id + ')">' + c.name + '</button>'
+    ).join('');
+}
+
+function setEngFilter(classId) {
+  engClassFilter = classId;
+  renderEngLegendFilter();
+  renderEngCalendar();
+}
+
+/* ── Filter events helper ── */
+function getFilteredEngEvents(evs) {
+  if (engClassFilter === null) return evs;
+  return evs.filter(e => e.classId === engClassFilter);
+}
+
+/* ── Month Navigation ── */
+function engPrevMonth() {
+  engCal.month--;
+  if (engCal.month < 0) { engCal.month = 11; engCal.year--; }
+  saveEngCal(); renderEngCalendar();
+}
+function engNextMonth() {
+  engCal.month++;
+  if (engCal.month > 11) { engCal.month = 0; engCal.year++; }
+  saveEngCal(); renderEngCalendar();
+}
+
+/* ── Week Navigation ── */
+function engPrevWeek() {
+  initWeekStart();
+  engWeekStart = addDays(engWeekStart, -7);
+  renderEngCalendar();
+}
+function engNextWeek() {
+  initWeekStart();
+  engWeekStart = addDays(engWeekStart, 7);
+  renderEngCalendar();
+}
+
+/* ── Render dispatch ── */
+function renderEngCalendar() {
+  if (engCalView === 'week') {
+    renderEngWeekView();
+  } else {
+    renderEngMonthView();
+  }
+}
+
+/* ── MONTH VIEW ── */
+function renderEngMonthView() {
+  const y = engCal.year, m = engCal.month;
+  const titleEl    = document.getElementById('eng-cal-title');
+  const hebTitleEl = document.getElementById('eng-cal-heb-title');
+  if (titleEl)    titleEl.textContent    = MONTHS[m] + ' ' + y;
+  if (hebTitleEl) hebTitleEl.textContent = hebMonthYear(new Date(y, m, 1));
+  const grid = document.getElementById('eng-cal-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  DAYS.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-dname';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+  const firstDay = new Date(y, m, 1).getDay();
+  for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+  const todayStr   = today();
+  const engEvDates = new Set(getFilteredEngEvents(engCal.events).map(e => e.date));
+  const dim = new Date(y, m + 1, 0).getDate();
+  for (let d = 1; d <= dim; d++) {
+    const dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const cell    = document.createElement('div');
+    cell.className = 'cal-cell';
+    if (dateStr === todayStr)    cell.classList.add('today');
+    if (engEvDates.has(dateStr)) cell.classList.add('has-ev');
+    if (dateStr === engSelDate)  cell.style.borderColor = 'var(--blue)';
+    cell.innerHTML = '<div>' + d + '</div><div class="hday">' + hebDayNum(new Date(y, m, d)) + '</div>';
+    cell.onclick = () => { engSelDate = dateStr; renderEngMonthView(); renderEngDayEvents(); };
+    grid.appendChild(cell);
+  }
+  renderEngUpcoming();
+  renderEngDayEvents();
+}
+
+/* ── WEEK VIEW ── */
+const HOUR_START = 7;
+const HOUR_END   = 22;
+const DAY_NAMES_SHORT = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+
+function renderEngWeekView() {
+  initWeekStart();
+  const grid = document.getElementById('eng-week-grid');
+  const titleEl = document.getElementById('eng-week-title');
+  if (!grid) return;
+
+  // Build 7 day strings
+  const days = [];
+  for (let i = 0; i < 7; i++) days.push(addDays(engWeekStart, i));
+
+  const todayStr = today();
+  const ws = new Date(engWeekStart + 'T00:00:00');
+  const we = new Date(days[6] + 'T00:00:00');
+  const fmtShort = d => {
+    const [y,mo,dy] = d.split('-');
+    return dy + '/' + mo;
+  };
+  if (titleEl) titleEl.textContent = fmtShort(days[0]) + ' – ' + fmtShort(days[6]) + ' ' + ws.getFullYear();
+
+  // Collect filtered events
+  const evs = getFilteredEngEvents(engCal.events);
+
+  // Separate all-day (no time) from timed
+  const allDayByDay = {};
+  const timedByDay  = {};
+  days.forEach(d => { allDayByDay[d] = []; timedByDay[d] = []; });
+  evs.forEach(e => {
+    if (!days.includes(e.date)) return;
+    if (e.time) timedByDay[e.date].push(e);
+    else        allDayByDay[e.date].push(e);
+  });
+
+  // Build HTML
+  let html = '';
+
+  // Header row
+  html += '<div class="eng-week-corner"></div>';
+  days.forEach((d, i) => {
+    const isToday = d === todayStr;
+    const dow = new Date(d + 'T00:00:00').getDay();
+    const dayNum = d.split('-')[2];
+    html += '<div class="eng-week-day-head' + (isToday ? ' today-col' : '') + '" onclick="openEngAddEvent(\''+d+'\')">' +
+      '<div class="eng-week-day-name">' + DAY_NAMES_SHORT[dow] + '</div>' +
+      '<div class="eng-week-day-num">' + parseInt(dayNum) + '</div>' +
+      '<div class="eng-week-day-heb">' + hebDayNum(new Date(d + 'T00:00:00')) + '</div>' +
+    '</div>';
+  });
+
+  // All-day row
+  const hasAnyAllDay = days.some(d => allDayByDay[d].length);
+  if (hasAnyAllDay) {
+    html += '<div class="eng-week-allday-corner">כל<br>היום</div>';
+    days.forEach(d => {
+      html += '<div class="eng-week-allday-cell">';
+      allDayByDay[d].forEach(e => {
+        const cls = S.classes.find(c => c.id === e.classId);
+        const color = cls ? cls.color : '#8b949e';
+        html += '<div class="eng-week-allday-ev" style="background:' + color + '" onclick="showEngEvPopup(event,' + e.id + ')" title="' + (e.title||'') + '">' + (e.title||'') + '</div>';
+      });
+      html += '</div>';
+    });
+  }
+
+  // Hour rows
+  for (let h = HOUR_START; h < HOUR_END; h++) {
+    const label = h + ':00';
+    html += '<div class="eng-week-time-label">' + label + '</div>';
+    days.forEach(d => {
+      const slotEvs = timedByDay[d].filter(e => {
+        const hr = parseInt((e.time || '00:00').split(':')[0]);
+        return hr === h;
+      });
+      html += '<div class="eng-week-slot" onclick="openEngAddEvent(\''+d+'\')">';
+      slotEvs.forEach(e => {
+        const cls = S.classes.find(c => c.id === e.classId);
+        const color = cls ? cls.color : '#8b949e';
+        const t = ENG_CAL_TYPES[e.type] || ENG_CAL_TYPES.other;
+        html += '<div class="eng-week-ev" style="background:' + color + '" ' +
+          'onclick="event.stopPropagation();showEngEvPopup(event,' + e.id + ')" ' +
+          'title="' + (e.title||'') + '">' +
+          '<span>' + (e.time||'') + '</span><span>' + (e.title||'') + '</span>' +
+        '</div>';
+      });
+      html += '</div>';
+    });
+  }
+
+  grid.innerHTML = html;
+}
+
+/* ── Event popup (edit/delete) ── */
+let _popupEl = null;
+function showEngEvPopup(evt, id) {
+  closeEngEvPopup();
+  const e = engCal.events.find(ev => ev.id === id);
+  if (!e) return;
+  const cls = S.classes.find(c => c.id === e.classId);
+  const clsColor = cls ? cls.color : '#8b949e';
+  const clsName  = cls ? cls.name  : '';
+  const t = ENG_CAL_TYPES[e.type] || ENG_CAL_TYPES.other;
+  const pop = document.createElement('div');
+  pop.className = 'eng-ev-popup';
+  pop.innerHTML =
+    '<div class="eng-ev-popup-title" style="color:' + clsColor + '">' + (e.title||'') + '</div>' +
+    '<div class="eng-ev-popup-meta">' +
+      fmtDate(e.date) + (e.time ? ' · ' + e.time : '') +
+      (clsName ? '<br>' + clsName : '') +
+      (e.track ? '<br>' + e.track : '') +
+      '<br><span style="color:' + t.color + '">' + t.label + '</span>' +
+    '</div>' +
+    '<div class="eng-ev-popup-btns">' +
+      '<button class="btn sm ghost" onclick="editEngEvent(' + id + ')">✏ ערוך</button>' +
+      '<button class="btn sm red"   onclick="delEngEventPopup(' + id + ')">🗑 מחק</button>' +
+    '</div>';
+  // Position
+  const rect = evt.target.getBoundingClientRect();
+  const left = Math.min(rect.left, window.innerWidth - 280);
+  const top  = rect.bottom + 6;
+  pop.style.left = left + 'px';
+  pop.style.top  = (top + window.scrollY) + 'px';
+  document.body.appendChild(pop);
+  _popupEl = pop;
+  setTimeout(() => document.addEventListener('click', closeEngEvPopup, { once: true }), 0);
+}
+function closeEngEvPopup() {
+  if (_popupEl) { _popupEl.remove(); _popupEl = null; }
+}
+function delEngEventPopup(id) {
+  closeEngEvPopup();
+  engCal.events = engCal.events.filter(e => e.id !== id);
+  saveEngCal(); renderEngCalendar();
+}
+function editEngEvent(id) {
+  closeEngEvPopup();
+  const e = engCal.events.find(ev => ev.id === id);
+  if (!e) return;
+  // Fill modal fields and store editing id
+  const selEl = document.getElementById('eng-ev-class');
+  if (selEl) selEl.innerHTML = '<option value="">כל הכיתות</option>' +
+    S.classes.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('');
+  document.getElementById('eng-ev-date').value  = e.date;
+  document.getElementById('eng-ev-time').value  = e.time || '';
+  document.getElementById('eng-ev-title').value = e.title || '';
+  document.getElementById('eng-ev-type').value  = e.type || 'other';
+  if (selEl && e.classId) selEl.value = e.classId;
+  document.getElementById('eng-ev-track').value = e.track || '';
+  window._editingEngEvId = id;
+  document.getElementById('modal-eng-add-event').classList.add('open');
+}
+
+/* ── Events for selected day (month view) ── */
+function renderEngDayEvents() {
+  const card  = document.getElementById('eng-ev-card');
+  const list  = document.getElementById('eng-ev-list');
+  const title = document.getElementById('eng-ev-card-title');
+  if (!card || !list) return;
+  if (!engSelDate) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const dayEvs = getFilteredEngEvents(engCal.events).filter(e => e.date === engSelDate).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+  const hdate  = hebrewDate(new Date(engSelDate + 'T00:00:00'));
+  title.textContent = fmtDate(engSelDate) + ' · ' + hdate;
+  if (!dayEvs.length) { list.innerHTML = '<div class="empty" style="padding:16px">אין אירועים ביום זה</div>'; return; }
+  list.innerHTML = dayEvs.map(e => renderEngEvItem(e)).join('');
+}
+
+/* ── Upcoming events (all) ── */
+function renderEngUpcoming() {
+  const list = document.getElementById('eng-upcoming-list');
+  if (!list) return;
+  const todayStr = today();
+  const upcoming = [...getFilteredEngEvents(engCal.events)]
+    .filter(e => e.date >= todayStr)
+    .sort((a,b) => a.date.localeCompare(b.date) || (a.time||'').localeCompare(b.time||''))
+    .slice(0, 10);
+  if (!upcoming.length) { list.innerHTML = '<div class="empty" style="padding:16px">אין אירועים קרובים</div>'; return; }
+  list.innerHTML = upcoming.map(e => renderEngEvItem(e)).join('');
+}
+
+/* ── Single event card (list style) ── */
+function renderEngEvItem(e) {
+  const t   = ENG_CAL_TYPES[e.type] || ENG_CAL_TYPES.other;
+  const cls = S.classes.find(c => c.id === e.classId);
+  const clsColor = cls ? cls.color : '#8b949e';
+  const clsName  = cls ? cls.name : '';
+  return '<div class="eng-ev-item" style="border-right-color:' + clsColor + '">' +
+    '<div class="eng-ev-body">' +
+      '<div class="eng-ev-title">' + (e.title || '') + '</div>' +
+      '<div class="eng-ev-meta">' +
+        fmtDate(e.date) + (e.time ? ' · ' + e.time : '') +
+        (clsName ? ' · ' + clsName : '') +
+        (e.track ? ' · ' + e.track : '') +
+      '</div>' +
+    '</div>' +
+    '<span class="eng-ev-type-chip" style="color:' + t.color + '">' + t.label + '</span>' +
+    '<button class="btn sm ghost" onclick="editEngEvent(' + e.id + ')" style="padding:4px 8px;font-size:12px">✏</button>' +
+    '<button class="del-btn" onclick="delEngEvent(' + e.id + ')">×</button>' +
+  '</div>';
+}
+
+/* ── Open add-event modal for a date ── */
+function openEngAddEvent(dateStr) {
+  window._editingEngEvId = null;
+  const d = dateStr || engSelDate || today();
+  const selEl = document.getElementById('eng-ev-class');
+  if (selEl) selEl.innerHTML = '<option value="">כל הכיתות</option>' +
+    S.classes.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('');
+  const dateEl = document.getElementById('eng-ev-date');
+  if (dateEl) dateEl.value = d;
+  document.getElementById('eng-ev-time').value  = '';
+  document.getElementById('eng-ev-title').value = '';
+  document.getElementById('eng-ev-track').value = '';
+  document.getElementById('modal-eng-add-event').classList.add('open');
+}
+
+/* ── Add / Save event ── */
+function addEngEvent() {
+  const date    = document.getElementById('eng-ev-date').value;
+  const time    = document.getElementById('eng-ev-time').value;
+  const title   = document.getElementById('eng-ev-title').value.trim();
+  const type    = document.getElementById('eng-ev-type').value;
+  const classId = document.getElementById('eng-ev-class').value ? parseInt(document.getElementById('eng-ev-class').value) : null;
+  const track   = document.getElementById('eng-ev-track').value.trim();
+  if (!date || !title) { alert('מלא לפחות תאריך וכותרת'); return; }
+
+  if (window._editingEngEvId) {
+    // Edit existing
+    const idx = engCal.events.findIndex(e => e.id === window._editingEngEvId);
+    if (idx !== -1) engCal.events[idx] = { id: window._editingEngEvId, date, time, title, type, classId, track };
+    window._editingEngEvId = null;
+  } else {
+    engCal.events.push({ id: Date.now(), date, time, title, type, classId, track });
+  }
+
+  document.getElementById('eng-ev-title').value = '';
+  document.getElementById('eng-ev-time').value  = '';
+  document.getElementById('eng-ev-track').value = '';
+  saveEngCal();
+  document.getElementById('modal-eng-add-event').classList.remove('open');
+  engSelDate = date;
+  renderEngCalendar();
+}
+
+/* ── Delete event ── */
+function delEngEvent(id) {
+  if (!confirm('למחוק אירוע זה?')) return;
+  engCal.events = engCal.events.filter(e => e.id !== id);
+  saveEngCal(); renderEngCalendar();
+}
+
+// ======= CLASS MANAGEMENT =======
+
+let _clsMgmtSelId = null;    // currently selected class id
+let _clsEditingId  = null;    // engineering event id being edited
+
+function initClsMgmtSelect() {
+  const sel = document.getElementById('cls-mgmt-sel');
+  if (!sel) return;
+  const prev = _clsMgmtSelId;
+  sel.innerHTML = '<option value="">-- בחר כיתה --</option>' +
+    S.classes.map(c => '<option value="' + c.id + '"' + (c.id === prev ? ' selected' : '') + '>' + c.name + '</option>').join('');
+  if (prev) renderClsMgmt(prev);
+}
+
+function onClsMgmtSelect(val) {
+  _clsMgmtSelId = val ? parseInt(val) : null;
+  _clsEditingId = null;
+  document.getElementById('cls-ev-edit-form').style.display = 'none';
+  renderClsMgmt(_clsMgmtSelId);
+}
+
+function renderClsMgmt(classId) {
+  const bodyEl   = document.getElementById('cls-mgmt-body');
+  const emptyEl  = document.getElementById('cls-mgmt-empty');
+  if (!classId) {
+    bodyEl.style.display  = 'none';
+    emptyEl.style.display = '';
+    return;
+  }
+  const cls = S.classes.find(c => c.id === classId);
+  if (!cls) return;
+  bodyEl.style.display  = '';
+  emptyEl.style.display = 'none';
+
+  // Get sorted events for this class from engCal
+  const evs = [...engCal.events]
+    .filter(e => e.classId === classId)
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+
+  // Summary
+  document.getElementById('cls-sum-total').textContent = evs.length;
+  document.getElementById('cls-sum-first').textContent = evs.length ? fmtDate(evs[0].date)           : '—';
+  document.getElementById('cls-sum-last').textContent  = evs.length ? fmtDate(evs[evs.length - 1].date) : '—';
+
+  // Events list
+  const listEl = document.getElementById('cls-ev-list');
+  if (!evs.length) {
+    listEl.innerHTML = '<div class="empty" style="padding:16px">אין אירועים לכיתה זו</div>';
+    return;
+  }
+  listEl.innerHTML = evs.map(e => {
+    const t = ENG_CAL_TYPES[e.type] || ENG_CAL_TYPES.other;
+    return '<div class="cls-ev-item" style="border-right-color:' + cls.color + '">' +
+      '<div class="cls-ev-body">' +
+        '<div class="cls-ev-title">' + (e.title || '(ללא כותרת)') + '</div>' +
+        '<div class="cls-ev-meta">' +
+          fmtDate(e.date) +
+          (e.time ? ' · ' + e.time : '') +
+          ' · <span style="color:' + t.color + ';font-weight:700">' + t.label + '</span>' +
+          (e.track ? ' · ' + e.track : '') +
+          (e.note ? '<br><span style="color:var(--dim)">' + e.note + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="cls-ev-actions">' +
+        '<button class="btn sm ghost" style="padding:4px 8px;font-size:12px" onclick="startClsEvEdit(' + e.id + ')">✏</button>' +
+        '<button class="del-btn" onclick="delClsEv(' + e.id + ')">×</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function startClsEvEdit(evId) {
+  const e = engCal.events.find(ev => ev.id === evId);
+  if (!e) return;
+  _clsEditingId = evId;
+  document.getElementById('cls-edit-date').value  = e.date   || '';
+  document.getElementById('cls-edit-time').value  = e.time   || '';
+  document.getElementById('cls-edit-type').value  = e.type   || 'other';
+  document.getElementById('cls-edit-title').value = e.title  || '';
+  document.getElementById('cls-edit-note').value  = e.note   || '';
+  document.getElementById('cls-ev-edit-form').style.display = '';
+  document.getElementById('cls-ev-edit-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelClsEvEdit() {
+  _clsEditingId = null;
+  document.getElementById('cls-ev-edit-form').style.display = 'none';
+}
+
+function saveClsEvEdit() {
+  if (!_clsEditingId) return;
+  const idx = engCal.events.findIndex(e => e.id === _clsEditingId);
+  if (idx === -1) return;
+  const date  = document.getElementById('cls-edit-date').value;
+  const time  = document.getElementById('cls-edit-time').value;
+  const type  = document.getElementById('cls-edit-type').value;
+  const title = document.getElementById('cls-edit-title').value.trim();
+  const note  = document.getElementById('cls-edit-note').value.trim();
+  if (!date || !title) { alert('מלא לפחות תאריך וכותרת'); return; }
+  engCal.events[idx] = Object.assign({}, engCal.events[idx], { date, time, type, title, note });
+  saveEngCal();
+  cancelClsEvEdit();
+  renderClsMgmt(_clsMgmtSelId);
+  if (solMainView === 'calendar') renderEngCalendar();
+}
+
+function delClsEv(evId) {
+  if (!confirm('למחוק אירוע זה?')) return;
+  engCal.events = engCal.events.filter(e => e.id !== evId);
+  saveEngCal();
+  if (_clsEditingId === evId) cancelClsEvEdit();
+  renderClsMgmt(_clsMgmtSelId);
+  if (solMainView === 'calendar') renderEngCalendar();
+}
+
+function filterTableBySelectedClass() {
+  if (!_clsMgmtSelId) return;
+  const cls = S.classes.find(c => c.id === _clsMgmtSelId);
+  if (!cls) return;
+  // Find 'כיתה' column index and apply filter
+  const ordCols = getOrderedColumns();
+  const clsColIdx = ordCols.findIndex(c => c.name === 'כיתה');
+  if (clsColIdx === -1) {
+    alert('לא נמצאה עמודת "כיתה" בטבלה. הוסף עמודה בשם "כיתה" כדי לסנן לפי כיתה.');
+    return;
+  }
+  const col = ordCols[clsColIdx];
+  // Clear existing filters and set this one
+  tblFilters = {};
+  tblFilters[col.id] = cls.name;
+  renderTable();
+  // Scroll table into view
+  const tblWrap = document.querySelector('.tbl-wrap');
+  if (tblWrap) tblWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ======= TABLE =======
+
+/* ── View state (not persisted) ── */
+let tblSearchQ    = '';
+let tblSortColId  = null;
+let tblSortDir    = 'asc';
+let tblFilters    = {};
+
+/* ── Migration: string[] → {id,name}[] ── */
+function migrateTableColumns() {
+  if (!Array.isArray(S.tableColumns)) S.tableColumns = [];
+  if (!Array.isArray(S.tableGroups))  S.tableGroups  = [];
+
+  if (S.tableColumns.length && typeof S.tableColumns[0] === 'string') {
+    let nid = Date.now();
+    S.tableColumns = S.tableColumns.map(name => ({ id: nid++, name: String(name) }));
+    S.tableGroups  = [];
+  }
+
+  let nextId = Date.now() + 9999;
+  S.tableColumns = S.tableColumns
+    .filter(c => c && typeof c === 'object')
+    .map(c => ({
+      id:   typeof c.id === 'number' ? c.id : nextId++,
+      name: (c.name && String(c.name).trim()) || 'ללא שם'
+    }));
+
+  // Remove invalid colIds from groups
+  const validIds = new Set(S.tableColumns.map(c => c.id));
+  S.tableGroups = S.tableGroups
+    .filter(g => g && typeof g === 'object')
+    .map(g => ({
+      id:     typeof g.id === 'number' ? g.id : nextId++,
+      name:   (g.name && String(g.name).trim()) || 'קבוצה',
+      colIds: Array.isArray(g.colIds) ? g.colIds.filter(id => validIds.has(id)) : []
+    }));
+}
+
+/* ── Column order: grouped cols first (by group order), then ungrouped ── */
+function getOrderedColumns() {
+  const seen   = new Set();
+  const result = [];
+  S.tableGroups.forEach(g => {
+    (g.colIds || []).forEach(cid => {
+      const col = S.tableColumns.find(c => c.id === cid);
+      if (col && !seen.has(col.id)) { seen.add(col.id); result.push(col); }
+    });
+  });
+  S.tableColumns.forEach(col => { if (!seen.has(col.id)) result.push(col); });
+  return result;
+}
+
+/* ── Normalise row data length ── */
+function normaliseRowData(row, n) {
+  if (!Array.isArray(row.data)) row.data = [];
+  while (row.data.length < n) row.data.push('');
+  if (row.data.length > n)    row.data = row.data.slice(0, n);
+}
+
+/* ── Search ── */
+function onTblSearch(val) {
+  tblSearchQ = val.trim().toLowerCase();
+  const clearBtn = document.getElementById('tbl-search-clear');
+  if (clearBtn) clearBtn.classList.toggle('visible', tblSearchQ.length > 0);
+  renderTableBody();
+}
+function clearTblSearch() {
+  tblSearchQ = '';
+  const inp = document.getElementById('tbl-search-input');
+  if (inp) inp.value = '';
+  const clearBtn = document.getElementById('tbl-search-clear');
+  if (clearBtn) clearBtn.classList.remove('visible');
+  renderTableBody();
+}
+
+/* ── Sort ── */
+function toggleSort(colId) {
+  if (tblSortColId === colId) {
+    tblSortDir = tblSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    tblSortColId = colId;
+    tblSortDir   = 'asc';
+  }
+  renderTableHeader();
+  renderTableBody();
+}
+
+/* ── Filter ── */
+function onColFilter(colId, val) {
+  if (val === '__all__') { delete tblFilters[colId]; }
+  else                   { tblFilters[colId] = val; }
+  renderActiveFilters();
+  renderTableBody();
+}
+function clearColFilter(colId) {
+  delete tblFilters[colId];
+  renderTableHeader();
+  renderActiveFilters();
+  renderTableBody();
+}
+function clearAllFilters() {
+  tblFilters = {}; tblSearchQ = ''; tblSortColId = null; tblSortDir = 'asc';
+  const inp = document.getElementById('tbl-search-input');
+  if (inp) inp.value = '';
+  const cb = document.getElementById('tbl-search-clear');
+  if (cb) cb.classList.remove('visible');
+  renderTable();
+}
+
+function renderActiveFilters() {
+  const wrap = document.getElementById('tbl-active-filters');
+  const clearAllBtn = document.getElementById('tbl-clear-all-btn');
+  if (!wrap) return;
+  const ordCols = getOrderedColumns();
+  const entries = Object.entries(tblFilters);
+  const hasAny  = entries.length > 0 || tblSortColId !== null;
+  wrap.innerHTML = entries.map(([colId, val]) => {
+    const col = ordCols.find(c => c.id === Number(colId));
+    return '<span class="filter-chip" onclick="clearColFilter(' + colId + ')" title="הסר סינון">' +
+      (col ? col.name : colId) + ': ' + val + ' \u00d7</span>';
+  }).join('');
+  if (tblSortColId) {
+    const col = ordCols.find(c => c.id === tblSortColId);
+    if (col) {
+      const arrow = tblSortDir === 'asc' ? '\u2191' : '\u2193';
+      wrap.innerHTML += '<span class="filter-chip" onclick="clearAllFilters()" title="הסר מיון" style="border-color:rgba(227,179,65,0.3);color:var(--yellow);background:rgba(227,179,65,0.1)">מיון: ' + col.name + ' ' + arrow + ' \u00d7</span>';
+    }
+  }
+  if (clearAllBtn) clearAllBtn.style.display = hasAny ? 'block' : 'none';
+}
+
+function getColUniqueValues(ci) {
+  const vals = new Set();
+  S.tableRows.forEach(r => { const v = (r.data[ci] || '').trim(); if (v) vals.add(v); });
+  return [...vals].sort((a,b) => a.localeCompare(b, 'he'));
+}
+
+function getFilteredSortedRows() {
+  const ordCols = getOrderedColumns();
+  const n = ordCols.length;
+  let rows = S.tableRows.map(r => { normaliseRowData(r, n); return r; });
+
+  if (tblSearchQ) {
+    rows = rows.filter(r => r.data.some(v => (v || '').toLowerCase().includes(tblSearchQ)));
+  }
+
+  Object.entries(tblFilters).forEach(([colId, val]) => {
+    const ci = ordCols.findIndex(c => c.id === Number(colId));
+    if (ci !== -1) rows = rows.filter(r => (r.data[ci] || '') === val);
+  });
+
+  if (tblSortColId !== null) {
+    const ci = ordCols.findIndex(c => c.id === tblSortColId);
+    if (ci !== -1) {
+      rows = [...rows].sort((a, b) => {
+        const av = (a.data[ci] || '').trim(), bv = (b.data[ci] || '').trim();
+        const an = parseFloat(av), bn = parseFloat(bv);
+        const numeric = !isNaN(an) && !isNaN(bn) && av !== '' && bv !== '';
+        const cmp = numeric ? an - bn : av.localeCompare(bv, 'he');
+        return tblSortDir === 'asc' ? cmp : -cmp;
+      });
+    }
+  }
+  return rows;
+}
+
+/* ── ROWS ── */
+function addTableRow() {
+  const n = getOrderedColumns().length;
+  S.tableRows.push({ id: Date.now(), data: Array(n).fill('') });
+  save(); renderTableBody(); updateTblCounts();
+}
+function delTableRow(id) {
+  if (!confirm('למחוק שורה זו?')) return;
+  S.tableRows = S.tableRows.filter(r => r.id !== id);
+  save(); renderTableBody(); updateTblCounts();
+}
+function updateCell(rowId, colId, val) {
+  const row = S.tableRows.find(r => r.id === rowId);
+  if (!row) return;
+  const ci = getOrderedColumns().findIndex(c => c.id === colId);
+  if (ci === -1) return;
+  normaliseRowData(row, getOrderedColumns().length);
+  row.data[ci] = val;
+  save();
+}
+
+/* ── COLUMNS ── */
+function addTableCol(groupId) {
+  const name = prompt('שם העמודה החדשה:');
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) { alert('שם העמודה לא יכול להיות ריק.'); return; }
+  const newCol = { id: Date.now(), name: trimmed };
+  S.tableColumns.push(newCol);
+  if (groupId !== null && groupId !== undefined) {
+    const g = S.tableGroups.find(g => g.id === groupId);
+    if (g) g.colIds.push(newCol.id);
+  }
+  S.tableRows.forEach(r => normaliseRowData(r, getOrderedColumns().length));
+  save(); renderTable();
+}
+
+function delTableCol(colId) {
+  const col = S.tableColumns.find(c => c.id === colId);
+  if (!col) return;
+  if (S.tableColumns.length <= 1) { alert('חייבת להיות לפחות עמודה אחת.'); return; }
+  if (!confirm('למחוק את העמודה "' + col.name + '"?\nהנתונים בה יאבדו.')) return;
+  const ci = getOrderedColumns().findIndex(c => c.id === colId);
+  S.tableColumns = S.tableColumns.filter(c => c.id !== colId);
+  S.tableGroups.forEach(g => { g.colIds = g.colIds.filter(id => id !== colId); });
+  if (ci !== -1) S.tableRows.forEach(r => { if (Array.isArray(r.data)) r.data.splice(ci, 1); });
+  if (tblSortColId === colId) { tblSortColId = null; tblSortDir = 'asc'; }
+  delete tblFilters[colId];
+  save(); renderTable();
+}
+
+function startEditColHeader(colId) {
+  const th  = document.getElementById('th-col-' + colId);
+  const col = S.tableColumns.find(c => c.id === colId);
+  if (!th || !col) return;
+  const safe = col.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  th.innerHTML = '<input class="th-edit-input" id="th-input-' + colId + '" value="' + safe + '" style="margin:6px 8px;width:calc(100% - 16px)" onblur="finishEditColHeader(' + colId + ')" onkeydown="if(event.key===\'Enter\'){this.blur()}else if(event.key===\'Escape\'){renderTableHeader()}">';
+  const inp = document.getElementById('th-input-' + colId);
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function finishEditColHeader(colId) {
+  const inp = document.getElementById('th-input-' + colId);
+  const col = S.tableColumns.find(c => c.id === colId);
+  if (!inp || !col) { renderTableHeader(); return; }
+  const val = inp.value.trim();
+  if (!val) { alert('שם העמודה לא יכול להיות ריק.'); inp.focus(); inp.select(); return; }
+  col.name = val;
+  save(); renderTableHeader();
+}
+
+/* ── GROUPS ── */
+function addTableGroup() {
+  const name = prompt('שם הקבוצה החדשה:');
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) { alert('שם הקבוצה לא יכול להיות ריק.'); return; }
+  S.tableGroups.push({ id: Date.now(), name: trimmed, colIds: [] });
+  save(); renderTable();
+}
+
+function delTableGroup(gid) {
+  const g = S.tableGroups.find(g => g.id === gid);
+  if (!g) return;
+  if (!confirm('למחוק את הקבוצה "' + g.name + '"?\nהעמודות שלה יישארו ללא קבוצה.')) return;
+  S.tableGroups = S.tableGroups.filter(g => g.id !== gid);
+  save(); renderTable();
+}
+
+function startEditGroupName(gid) {
+  const el = document.getElementById('grp-label-' + gid);
+  const g  = S.tableGroups.find(g => g.id === gid);
+  if (!el || !g) return;
+  const safe = g.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  el.outerHTML = '<input class="th-edit-input-group" id="grp-input-' + gid + '" value="' + safe + '" onblur="finishEditGroupName(' + gid + ')" onkeydown="if(event.key===\'Enter\'){this.blur()}else if(event.key===\'Escape\'){renderTableHeader()}">';
+  const inp = document.getElementById('grp-input-' + gid);
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function finishEditGroupName(gid) {
+  const inp = document.getElementById('grp-input-' + gid);
+  const g   = S.tableGroups.find(g => g.id === gid);
+  if (!inp || !g) { renderTableHeader(); return; }
+  const val = inp.value.trim();
+  if (!val) { alert('שם הקבוצה לא יכול להיות ריק.'); inp.focus(); inp.select(); return; }
+  g.name = val;
+  save(); renderTableHeader();
+}
+
+/* ── RENDER HEADER (3 rows: groups / col-names+sort / filters) ── */
+function renderTableHeader() {
+  const thead = document.getElementById('tbl-head');
+  if (!thead) return;
+  const ordCols    = getOrderedColumns();
+  const groupedSet = new Set(S.tableGroups.flatMap(g => g.colIds || []));
+  const ungrouped  = ordCols.filter(col => !groupedSet.has(col.id));
+
+  let r1 = '<tr>';
+  r1 += '<th class="th-index" rowspan="3">#</th>';
+  S.tableGroups.forEach(g => {
+    const cols = (g.colIds || []).map(cid => S.tableColumns.find(c => c.id === cid)).filter(Boolean);
+    const span = Math.max(cols.length, 1);
+    const safeName = (g.name || 'קבוצה').replace(/</g,'&lt;');
+    r1 += '<th class="th-group" colspan="' + span + '"><div class="th-group-inner">' +
+      '<span class="th-group-name" id="grp-label-' + g.id + '" title="לחץ פעמיים לעריכת שם" ondblclick="startEditGroupName(' + g.id + ')">' + safeName + '</span>' +
+      '<button class="th-group-add" onclick="addTableCol(' + g.id + ')" title="הוסף עמודה">\uff0b</button>' +
+      '<button class="th-group-del" onclick="delTableGroup(' + g.id + ')" title="מחק קבוצה">\u2715</button>' +
+      '</div></th>';
+  });
+  if (ungrouped.length) r1 += '<th class="th-group-none" colspan="' + ungrouped.length + '">ללא קבוצה</th>';
+  r1 += '<th class="th-actions" rowspan="3"></th></tr>';
+
+  let r2 = '<tr>';
+  ordCols.forEach(col => {
+    const isSorted  = tblSortColId === col.id;
+    const sortClass = isSorted ? (' sorted-' + tblSortDir) : '';
+    const filterCls = tblFilters[col.id] !== undefined ? ' has-filter' : '';
+    const sortIcon  = isSorted ? (tblSortDir === 'asc' ? '\u2191' : '\u2193') : '\u2195';
+    const safeName  = (col.name || '').replace(/</g,'&lt;');
+    r2 += '<th class="th-col' + sortClass + filterCls + '" id="th-col-' + col.id + '" ondblclick="startEditColHeader(' + col.id + ')">' +
+      '<div class="th-col-top" onclick="toggleSort(' + col.id + ')">' +
+      '<span class="th-col-label">' + safeName + '</span>' +
+      '<span class="th-sort-icon">' + sortIcon + '</span>' +
+      '<button class="th-col-del" onclick="event.stopPropagation();delTableCol(' + col.id + ')" title="מחק עמודה">\u2715</button>' +
+      '</div></th>';
+  });
+  r2 += '</tr>';
+
+  let r3 = '<tr>';
+  ordCols.forEach((col, ci) => {
+    const uniqueVals   = getColUniqueValues(ci);
+    const activeFilter = tblFilters[col.id];
+    const opts = uniqueVals.map(v => {
+      const sel  = v === activeFilter ? ' selected' : '';
+      const safe = v.replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      return '<option value="' + safe + '"' + sel + '>' + safe + '</option>';
+    }).join('');
+    const cls = activeFilter !== undefined ? ' active' : '';
+    r3 += '<th class="th-col" style="padding:0;position:static">' +
+      '<div class="th-filter-row">' +
+      '<select class="th-filter-select' + cls + '" onchange="onColFilter(' + col.id + ',this.value===\'__all__\'?\'__all__\':this.value)">' +
+      '<option value="__all__"' + (activeFilter === undefined ? ' selected' : '') + '>הכל</option>' +
+      opts + '</select></div></th>';
+  });
+  r3 += '</tr>';
+
+  thead.innerHTML = r1 + r2 + r3;
+}
+
+/* ── UPDATE COUNTS ── */
+function updateTblCounts() {
+  const visEl   = document.getElementById('tbl-visible-count');
+  const totalEl = document.getElementById('tbl-total-count');
+  const lbl     = document.getElementById('tbl-count-label');
+  const visible = getFilteredSortedRows().length;
+  const total   = S.tableRows.length;
+  if (visEl)   visEl.textContent   = visible;
+  if (totalEl) totalEl.textContent = total;
+  if (lbl)     lbl.textContent     = total + ' שורות';
+}
+
+/* ── RENDER BODY ── */
+function renderTableBody() {
+  const tbody = document.getElementById('tbl-body');
+  if (!tbody) return;
+  const ordCols = getOrderedColumns();
+  const n = ordCols.length;
+  if (!n) {
+    tbody.innerHTML = '<tr class="tbl-no-results"><td colspan="3">אין עמודות. לחץ \uff0b עמודה.</td></tr>';
+    updateTblCounts(); return;
+  }
+  const rows = getFilteredSortedRows();
+  updateTblCounts();
+  if (!rows.length) {
+    const msg = (tblSearchQ || Object.keys(tblFilters).length)
+      ? '\ud83d\udd0d לא נמצאו תוצאות לחיפוש / סינון זה'
+      : 'לחץ \uff0b שורה להתחיל';
+    tbody.innerHTML = '<tr class="tbl-no-results"><td colspan="' + (n + 2) + '">' + msg + '</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map((row, displayIdx) => {
+    normaliseRowData(row, n);
+    const origIdx = S.tableRows.findIndex(r => r.id === row.id);
+    const rowNum  = origIdx !== -1 ? origIdx + 1 : displayIdx + 1;
+    const cells = ordCols.map((col, ci) => {
+      const raw  = row.data[ci] || '';
+      if (tblSearchQ && raw.toLowerCase().includes(tblSearchQ)) {
+        const regex = new RegExp('(' + tblSearchQ.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+        const hl = raw.replace(regex, '<mark style="background:rgba(227,179,65,0.35);color:var(--yellow);border-radius:2px">$1</mark>');
+        return '<td><div style="min-width:70px;font-size:13px;padding:2px 0">' + hl + '</div></td>';
+      }
+      const safe = raw.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      return '<td><input type="text" value="' + safe + '" placeholder="\u2014" onchange="updateCell(' + row.id + ',' + col.id + ',this.value)"></td>';
+    }).join('');
+    return '<tr><td class="row-num">' + rowNum + '</td>' + cells +
+      '<td style="text-align:center;padding:4px"><button class="del-btn" onclick="delTableRow(' + row.id + ')" title="מחק שורה">\ud83d\uddd1</button></td></tr>';
+  }).join('');
+}
+
+/* ── RENDER TABLE (full) ── */
+function renderTable() {
+  try {
+    migrateTableColumns();
+    renderTableHeader();
+    renderTableBody();
+    renderActiveFilters();
+  } catch(err) {
+    console.error('renderTable error:', err);
+  }
+}
+
+/* ── EXPORT CSV (Excel-compatible with BOM) ── */
+function exportCSV() {
+  try {
+    const ordCols = getOrderedColumns();
+    const rows    = getFilteredSortedRows();
+    const groupRow = ordCols.map(col => {
+      const g = S.tableGroups.find(g => (g.colIds || []).includes(col.id));
+      return '"' + (g ? g.name.replace(/"/g,'""') : '') + '"';
+    });
+    const grp  = ['""', ...groupRow].join(',');
+    const hdr  = ['"#"', ...ordCols.map(c => '"' + c.name.replace(/"/g,'""') + '"')].join(',');
+    const data = rows.map((row, i) => {
+      normaliseRowData(row, ordCols.length);
+      return [i + 1, ...row.data.map(v => '"' + (v || '').replace(/"/g,'""') + '"')].join(',');
+    });
+    const csv = '\ufeff' + [grp, hdr, ...data].join('\n');
+    const a   = document.createElement('a');
+    a.href    = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'handasa_' + today() + '.csv';
+    a.click();
+  } catch(err) { alert('שגיאה בייצוא'); }
+}
+
+// ======= HOME =======
+function renderHome() {
+  // stats
+  const openTasks = S.tasks.filter(t=>!t.done).length;
+  const pendReqs = S.requests.filter(r=>!r.done).length;
+  const weekEvs = S.events.filter(e=>isThisWeek(e.date)).length;
+  document.getElementById('stat-tasks').textContent = openTasks;
+  document.getElementById('stat-reqs').textContent = pendReqs;
+  document.getElementById('stat-evs').textContent = weekEvs;
+
+  // upcoming events
+  const evList = document.getElementById('home-events');
+  const upcoming = [...S.events].filter(e=>e.date>=today()).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+  evList.innerHTML = upcoming.length ? upcoming.map(e=>`
+    <div class="ev-item">
+      <div class="ev-dot" style="background:${e.color}"></div>
+      <div class="ev-body">
+        <div class="ev-title">${e.text}</div>
+        <div class="ev-meta">${fmtDate(e.date)}${e.time ? ' · ' + e.time : ''} · ${hebrewDate(new Date(e.date+'T00:00:00'))}</div>
+      </div>
+    </div>
+  `).join('') : '<div class="empty" style="padding:20px">אין אירועים קרובים</div>';
+
+  // urgent tasks
+  const tList = document.getElementById('home-tasks');
+  const urgent = S.tasks.filter(t=>!t.done&&t.pri==='high').slice(0,3);
+  tList.innerHTML = urgent.length ? urgent.map(t=>`
+    <div class="task-item">
+      <input type="checkbox" class="task-cb" onchange="toggleTask(${t.id})">
+      <div class="task-body"><div class="task-label">${t.text}</div><span class="task-badge p-high">דחוף</span></div>
+    </div>
+  `).join('') : '<div class="empty" style="padding:20px">אין משימות דחופות 🎉</div>';
+
+  // requests
+  const rList = document.getElementById('home-reqs');
+  const reqs = S.requests.filter(r=>!r.done).slice(0,3);
+  rList.innerHTML = reqs.length ? reqs.map(r=>`
+    <div class="req-item">
+      <div class="req-dot" style="background:var(--yellow)"></div>
+      <div class="req-body"><div class="req-text">${r.text}</div>${r.due?`<div class="req-due">עד ${fmtDate(r.due)}</div>`:''}</div>
+      <button class="req-done-btn" onclick="toggleRequest(${r.id})">בוצע</button>
+    </div>
+  `).join('') : '<div class="empty" style="padding:20px">אין בקשות ממתינות</div>';
+
+  // more tab labels
+  document.getElementById('req-count-label').textContent = pendReqs + ' ממתינות';
+  document.getElementById('tbl-count-label').textContent = S.tableRows.length + ' שורות';
+}
+
+// ======= RENDER ALL =======
+function renderAll() {
+  updateHeaderDate();
+  renderCalendar();
+  renderSoldiers();
+  renderTasks();
+  renderHome();
+  // Refresh eng calendar if currently shown
+  if (solMainView === 'calendar') renderEngCalendar();
+}
+
+// ======= PASSWORD =======
+const CORRECT_PW = 'handasa2025';
+function checkPW() {
+  const val = document.getElementById('pw-input').value;
+  if (val === CORRECT_PW) {
+    sessionStorage.setItem('pw_ok', '1');
+    document.getElementById('pw-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    startApp();
+  } else {
+    document.getElementById('pw-error').textContent = 'סיסמה שגויה. נסה שוב.';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+// Check if already authenticated this session
+if (sessionStorage.getItem('pw_ok') === '1') {
+  document.getElementById('pw-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+
+// ======= CSV IMPORT =======
+function importCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.split(/
+?
+/).filter(l => l.trim());
+    if (lines.length < 2) { alert('הקובץ ריק או לא תקין'); return; }
+    
+    // Parse headers (skip BOM)
+    const headerLine = lines[0].replace(/^﻿/, '');
+    const headers = headerLine.split(',').map(h => h.replace(/^"|"$/g,'').trim());
+    
+    // Reset columns to match CSV
+    S.tableColumns = headers.map((h, i) => ({ id: Date.now() + i, name: h }));
+    S.tableGroups = [{ id: 1, name: 'נתונים', colIds: S.tableColumns.map(c => c.id) }];
+    
+    // Parse rows
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cells = lines[i].split(',').map(c => c.replace(/^"|"$/g,'').trim());
+      rows.push({ id: Date.now() + i * 1000, data: cells });
+    }
+    S.tableRows = rows;
+    save();
+    renderTable();
+    alert('✅ יובאו ' + rows.length + ' שורות בהצלחה!');
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ======= INIT =======
+async function startApp() {
+  load();
+  loadEngCal();
+  ensureClassColors();
+  migrateTableColumns();
+  renderAll();
+  
+  // Load from Firebase in background
+  if (window.fbLoad) {
+    await loadFromFirebase();
+    await loadEngCalFromFirebase();
+    renderAll();
+    
+    // Listen for real-time updates from other users
+    window.fbListen('state', (remote) => {
+      const localStr = JSON.stringify(S);
+      const remoteStr = JSON.stringify(remote);
+      if (localStr !== remoteStr) {
+        S = Object.assign({}, defaultState, remote);
+        try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+        renderAll();
+      }
+    });
+    window.fbListen('engCal', (remote) => {
+      engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, remote);
+      try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
+      if (solMainView === 'calendar') renderEngCalendar();
+    });
+  }
+}
+
+// Hide app until password entered (if not already authenticated)
+if (sessionStorage.getItem('pw_ok') !== '1') {
+  document.getElementById('app').style.display = 'none';
+}
+
+// _initAppWhenReady is called when Firebase module loads
+window._initAppWhenReady = function() {
+  if (sessionStorage.getItem('pw_ok') === '1') {
+    startApp();
+  }
+};
+if (window._fbReady && sessionStorage.getItem('pw_ok') === '1') {
+  startApp();
+}
+</script>
+<!-- PWA Install -->
+<style>
+#pwa-install-btn {
+  display: none;
+  position: fixed;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px);
+  left: 50%; transform: translateX(-50%);
+  z-index: 999;
+  background: linear-gradient(135deg, #4caf50, #8bc34a);
+  color: #fff; border: none; border-radius: 30px;
+  padding: 12px 24px;
+  font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 700;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(76,175,80,0.4);
+  white-space: nowrap; gap: 8px; align-items: center;
+  animation: pwa-bounce 2s ease-in-out infinite;
+}
+#pwa-install-btn.visible { display: flex; }
+@keyframes pwa-bounce {
+  0%,100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
+}
+</style>
+<button id="pwa-install-btn" onclick="pwaTriggerInstall()">📱 הוסף למסך הבית</button>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); _pwaPrompt = e;
+  document.getElementById('pwa-install-btn').classList.add('visible');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('pwa-install-btn').classList.remove('visible');
+  _pwaPrompt = null;
+});
+function pwaTriggerInstall() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(c => {
+    if (c.outcome === 'accepted') document.getElementById('pwa-install-btn').classList.remove('visible');
+    _pwaPrompt = null;
+  });
+}
+</script>
+</body>
+</html>
