@@ -1284,7 +1284,7 @@ textarea { resize: none; min-height: 70px; }
   </div>
 </div>
 
-<div id="app">
+<div id="app" style="display:none">
 
 <!-- TOP BAR -->
 <div class="top-bar">
@@ -1479,6 +1479,17 @@ textarea { resize: none; min-height: 70px; }
     </div>
   </div>
 
+    <div class="card" style="cursor:pointer;margin-top:8px" onclick="openAdminLogin()">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px">⚙️</div>
+        <div>
+          <div style="font-size:15px;font-weight:700">הגדרות מנהל</div>
+          <div style="font-size:12px;color:var(--dim)">שינוי סיסמה, צבעים, טאבים ועמודות</div>
+        </div>
+        <div style="margin-right:auto;color:var(--dim);font-size:20px">‹</div>
+      </div>
+    </div>
+
 </div><!-- /content -->
 
 <!-- FAB -->
@@ -1511,12 +1522,16 @@ textarea { resize: none; min-height: 70px; }
   <div class="modal" style="max-height:90vh">
     <div class="modal-title">⚙️ הגדרות מנהל <button class="modal-close" onclick="closeModal('modal-admin')">×</button></div>
 
-    <!-- Change password -->
+    <!-- Change passwords -->
     <div class="card" style="margin-bottom:12px">
-      <div class="card-title">🔑 שינוי סיסמה</div>
-      <div class="form-row"><label>סיסמה נוכחית</label><input type="password" id="admin-old-pw" placeholder="הסיסמה הנוכחית"></div>
-      <div class="form-row"><label>סיסמה חדשה</label><input type="password" id="admin-new-pw" placeholder="סיסמה חדשה"></div>
-      <button class="btn full green" onclick="adminChangePW()">שמור סיסמה חדשה</button>
+      <div class="card-title">🔑 סיסמאות</div>
+      <div class="form-row"><label>סיסמת כניסה לאפליקציה (למשתמשים)</label>
+        <input type="password" id="admin-user-pw" placeholder="סיסמה חדשה למשתמשים">
+      </div>
+      <button class="btn full green" style="margin-bottom:10px" onclick="adminChangeUserPW()">שמור סיסמת משתמש</button>
+      <div class="form-row"><label>סיסמת מנהל (נוכחית)</label><input type="password" id="admin-old-pw" placeholder="הסיסמה הנוכחית"></div>
+      <div class="form-row"><label>סיסמת מנהל חדשה</label><input type="password" id="admin-new-pw" placeholder="סיסמה חדשה"></div>
+      <button class="btn full" onclick="adminChangePW()">שמור סיסמת מנהל</button>
       <div id="admin-pw-msg" style="font-size:13px;margin-top:8px;text-align:center;min-height:18px"></div>
     </div>
 
@@ -1533,22 +1548,43 @@ textarea { resize: none; min-height: 70px; }
           <option value="#a371f7">🟣 סגול</option>
         </select>
       </div>
+      <div class="form-row"><label>מצב תצוגה</label>
+        <select id="admin-theme">
+          <option value="dark">🌙 כהה (נוכחי)</option>
+          <option value="light">☀️ בהיר</option>
+        </select>
+      </div>
       <button class="btn full" onclick="adminSaveAppSettings()">שמור הגדרות</button>
     </div>
 
-    <!-- Manage tabs -->
+    <!-- Manage existing tabs -->
     <div class="card" style="margin-bottom:12px">
-      <div class="card-title">📑 ניהול טאבים</div>
+      <div class="card-title">📑 שמות טאבים קיימים</div>
+      <div id="admin-existing-tabs-list" style="margin-bottom:8px"></div>
+      <button class="btn full ghost" onclick="adminSaveExistingTabs()">💾 שמור שמות טאבים</button>
+    </div>
+
+    <!-- Add custom tabs -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">➕ הוספת טאב חדש</div>
       <div id="admin-tabs-list" style="margin-bottom:10px"></div>
-      <div class="form-row"><label>שם טאב חדש</label><input type="text" id="admin-new-tab" placeholder="לדוגמה: דוחות"></div>
+      <div class="form-row"><label>שם הטאב</label><input type="text" id="admin-new-tab" placeholder="לדוגמה: דוחות"></div>
       <div class="form-row"><label>אייקון</label>
         <select id="admin-new-tab-icon">
           <option value="📋">📋 רשימה</option>
-          <option value="📊">📊 גרף</option>
-          <option value="🗂️">🗂️ תיקייה</option>
+          <option value="📊">📊 טבלה</option>
           <option value="📝">📝 הערות</option>
+          <option value="✅">✅ משימות</option>
           <option value="🔔">🔔 התראות</option>
           <option value="⭐">⭐ מועדפים</option>
+          <option value="🗂️">🗂️ תיקייה</option>
+        </select>
+      </div>
+      <div class="form-row"><label>סוג תוכן</label>
+        <select id="admin-new-tab-type">
+          <option value="notes">📝 הערות חופשיות (פתקים)</option>
+          <option value="tasks">✅ רשימת משימות</option>
+          <option value="table">📊 טבלה</option>
         </select>
       </div>
       <button class="btn full yellow" style="color:#0a0f06" onclick="adminAddTab()">➕ הוסף טאב</button>
@@ -1556,8 +1592,12 @@ textarea { resize: none; min-height: 70px; }
 
     <!-- Table columns -->
     <div class="card">
-      <div class="card-title">📊 שמות עמודות ברירת מחדל</div>
+      <div class="card-title">📊 ניהול עמודות הטבלה</div>
       <div id="admin-cols-list" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="admin-new-col" placeholder="שם עמודה חדשה" style="flex:1">
+        <button class="btn green" onclick="adminAddCol()">➕</button>
+      </div>
       <button class="btn full ghost" onclick="adminSaveCols()">💾 שמור עמודות</button>
     </div>
   </div>
@@ -1970,12 +2010,24 @@ function fmtDate(s) {
   const [y,m,d] = s.split('-');
   return `${d}/${m}/${y}`;
 }
+function numToHebrewLetter(n) {
+  const letters = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י',
+    'יא', 'יב', 'יג', 'יד', 'טו', 'טז', 'יז', 'יח', 'יט', 'כ',
+    'כא', 'כב', 'כג', 'כד', 'כה', 'כו', 'כז', 'כח', 'כט', 'ל'];
+  var geresh = String.fromCharCode(1523); return (letters[n] || n) + geresh;
+}
 function hebrewDate(d) {
-  try { return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day:'numeric', month:'long' }).format(d); }
+  try {
+    const raw = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day:'numeric', month:'long' }).format(d);
+    return raw.replace(/^(\d+)/, function(m) { return numToHebrewLetter(parseInt(m)); });
+  }
   catch(e) { return ''; }
 }
 function hebDayNum(d) {
-  try { return new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day:'numeric' }).format(d); }
+  try {
+    const raw = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day:'numeric' }).format(d);
+    return raw.replace(/^(\d+)/, function(m) { return numToHebrewLetter(parseInt(m)); });
+  }
   catch(e) { return ''; }
 }
 function hebMonthYear(d) {
@@ -3295,11 +3347,9 @@ function renderAll() {
 
 
 // ======= ADMIN SETTINGS =======
-const ADMIN_PW_KEY = 'admin_pw';
 
-function getAdminPW() {
-  return S.adminPW || 'admin1234';
-}
+function getAdminPW() { return S.adminPW || 'admin1234'; }
+function getUserPW() { return S.userPW || '1234'; }
 
 function adminLogin() {
   const pw = document.getElementById('admin-login-pw').value;
@@ -3323,56 +3373,81 @@ function openAdminPanel() {
   renderAdminPanel();
 }
 
+// Built-in tab names
+const DEFAULT_TAB_NAMES = {
+  home: { default: 'בית', icon: '🏠' },
+  cal:  { default: 'לוח שנה', icon: '📅' },
+  soldiers: { default: 'חיילים', icon: '🪖' },
+  tasks: { default: 'משימות', icon: '✅' },
+  more: { default: 'עוד', icon: '⋯' }
+};
+
 function renderAdminPanel() {
-  // App name
+  // App name & color
   const nameEl = document.getElementById('admin-app-name');
   if (nameEl) nameEl.value = S.appName || 'מפקד';
-  
-  // Color
   const colorEl = document.getElementById('admin-color');
   if (colorEl && S.appColor) colorEl.value = S.appColor;
 
-  // Tabs list
+  // Existing tabs rename
+  const existingList = document.getElementById('admin-existing-tabs-list');
+  if (existingList) {
+    existingList.innerHTML = Object.entries(DEFAULT_TAB_NAMES).map(([id, t]) => {
+      const saved = S.tabNames && S.tabNames[id];
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:18px">\${t.icon}</span>
+        <input type="text" id="tab-rename-\${id}" value="\${saved || t.default}" style="flex:1">
+      </div>`;
+    }).join('');
+  }
+
+  // Custom tabs list
   const tabsList = document.getElementById('admin-tabs-list');
   const customTabs = S.customTabs || [];
-  tabsList.innerHTML = customTabs.length ? customTabs.map((t,i) => `
+  if (tabsList) tabsList.innerHTML = customTabs.length ? customTabs.map((t,i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:18px">${t.icon}</span>
-      <span style="flex:1;font-size:14px">${t.name}</span>
-      <button class="del-btn" onclick="adminDelTab(${i})">×</button>
+      <span style="font-size:18px">\${t.icon}</span>
+      <span style="flex:1;font-size:14px">\${t.name}</span>
+      <button class="del-btn" onclick="adminDelTab(\${i})">×</button>
     </div>
-  `).join('') : '<div style="color:var(--dim);font-size:13px;padding:8px 0">אין טאבים מותאמים עדיין</div>';
+  `).join('') : '<div style="color:var(--dim);font-size:13px;padding:8px 0">אין טאבים מותאמים</div>';
 
-  // Columns list
+  // Columns list with delete & reorder
   const colsList = document.getElementById('admin-cols-list');
-  colsList.innerHTML = S.tableColumns.map((col,i) => `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <input type="text" value="${col.name}" id="admin-col-${col.id}" style="flex:1">
+  if (colsList) colsList.innerHTML = S.tableColumns.map((col, i) => `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px" id="admin-col-row-\${col.id}">
+      <span style="color:var(--dim);font-size:16px;cursor:grab">☰</span>
+      <input type="text" value="\${col.name}" id="admin-col-\${col.id}" style="flex:1">
+      <button onclick="adminMoveCol(\${i},-1)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);padding:4px 7px;cursor:pointer;font-size:13px">↑</button>
+      <button onclick="adminMoveCol(\${i},1)" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);padding:4px 7px;cursor:pointer;font-size:13px">↓</button>
+      <button onclick="adminDelCol(\${col.id})" style="background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;padding:0 4px">×</button>
     </div>
   `).join('');
+}
+
+function adminChangeUserPW() {
+  const newPw = document.getElementById('admin-user-pw').value.trim();
+  const msg = document.getElementById('admin-pw-msg');
+  if (newPw.length < 3) { msg.style.color='var(--red)'; msg.textContent='סיסמה קצרה מדי'; return; }
+  S.userPW = newPw;
+  save();
+  document.getElementById('admin-user-pw').value = '';
+  msg.style.color = 'var(--green)';
+  msg.textContent = '✅ סיסמת משתמש עודכנה!';
 }
 
 function adminChangePW() {
   const oldPw = document.getElementById('admin-old-pw').value;
   const newPw = document.getElementById('admin-new-pw').value.trim();
   const msg = document.getElementById('admin-pw-msg');
-  
-  if (oldPw !== getAdminPW()) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = 'סיסמה נוכחית שגויה';
-    return;
-  }
-  if (newPw.length < 3) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = 'הסיסמה קצרה מדי (מינימום 3 תווים)';
-    return;
-  }
+  if (oldPw !== getAdminPW()) { msg.style.color='var(--red)'; msg.textContent='סיסמה נוכחית שגויה'; return; }
+  if (newPw.length < 3) { msg.style.color='var(--red)'; msg.textContent='סיסמה קצרה מדי'; return; }
   S.adminPW = newPw;
   save();
   document.getElementById('admin-old-pw').value = '';
   document.getElementById('admin-new-pw').value = '';
   msg.style.color = 'var(--green)';
-  msg.textContent = '✅ הסיסמה עודכנה בהצלחה!';
+  msg.textContent = '✅ סיסמת מנהל עודכנה!';
 }
 
 function adminSaveAppSettings() {
@@ -3380,54 +3455,89 @@ function adminSaveAppSettings() {
   const color = document.getElementById('admin-color').value;
   if (name) S.appName = name;
   if (color) S.appColor = color;
-  save();
-  applyAppSettings();
+  save(); applyAppSettings();
   alert('✅ ההגדרות נשמרו!');
 }
 
+function adminSaveExistingTabs() {
+  if (!S.tabNames) S.tabNames = {};
+  Object.keys(DEFAULT_TAB_NAMES).forEach(id => {
+    const el = document.getElementById('tab-rename-' + id);
+    if (el && el.value.trim()) S.tabNames[id] = el.value.trim();
+  });
+  save(); applyTabNames();
+  alert('✅ שמות הטאבים עודכנו!');
+}
+
+function applyTabNames() {
+  const navBtns = document.querySelectorAll('.bottom-nav .nav-btn:not(.custom-nav-btn)');
+  const ids = ['home','cal','soldiers','tasks','more'];
+  navBtns.forEach((btn, i) => {
+    const id = ids[i];
+    if (!id) return;
+    const spans = btn.querySelectorAll('span');
+    const labelSpan = spans[1]; // second span is the label
+    if (labelSpan && S.tabNames && S.tabNames[id]) {
+      labelSpan.textContent = S.tabNames[id];
+    }
+  });
+}
+
 function applyAppSettings() {
-  // Update app name in logo
-  const logo = document.querySelector('.top-bar .logo');
-  if (logo && S.appName) logo.innerHTML = S.appName.replace(/(.)(.)/, '$1<span>$2</span>');
-  
-  // Update primary color
-  if (S.appColor) {
-    document.documentElement.style.setProperty('--blue', S.appColor);
+  if (S.appColor) document.documentElement.style.setProperty('--blue', S.appColor);
+  if (S.appName) {
+    const logo = document.querySelector('.top-bar .logo');
+    if (logo) logo.textContent = S.appName;
   }
 }
 
 function adminAddTab() {
   const name = document.getElementById('admin-new-tab').value.trim();
   const icon = document.getElementById('admin-new-tab-icon').value;
+  const type = document.getElementById('admin-new-tab-type').value;
   if (!name) return;
   if (!S.customTabs) S.customTabs = [];
-  S.customTabs.push({ name, icon, id: Date.now() });
+  const id = 'custom_' + Date.now();
+  S.customTabs.push({ name, icon, id, type });
+  if (!S.customTabData) S.customTabData = {};
+  S.customTabData[id] = [];
   document.getElementById('admin-new-tab').value = '';
-  save();
-  renderAdminPanel();
-  renderCustomTabs();
+  save(); renderAdminPanel(); renderCustomTabs();
 }
 
 function adminDelTab(i) {
+  const tab = S.customTabs[i];
+  if (tab && S.customTabData) delete S.customTabData[tab.id];
   S.customTabs.splice(i, 1);
-  save();
-  renderAdminPanel();
-  renderCustomTabs();
+  save(); renderAdminPanel(); renderCustomTabs();
 }
 
-function renderCustomTabs() {
-  // Add custom tabs to bottom nav
-  const nav = document.querySelector('.bottom-nav');
-  // Remove old custom tabs
-  nav.querySelectorAll('.custom-nav-btn').forEach(b => b.remove());
-  // Add new ones
-  (S.customTabs || []).forEach(t => {
-    const btn = document.createElement('button');
-    btn.className = 'nav-btn custom-nav-btn';
-    btn.innerHTML = `<span class="icon">${t.icon}</span><span>${t.name}</span><span class="nav-pip"></span>`;
-    btn.onclick = () => alert('טאב "' + t.name + '" — ניתן להוסיף תוכן עתידי');
-    nav.appendChild(btn);
-  });
+function adminAddCol() {
+  const name = document.getElementById('admin-new-col').value.trim();
+  if (!name) return;
+  const newId = Date.now();
+  S.tableColumns.push({ id: newId, name });
+  // Add to last group or ungrouped
+  if (S.tableGroups && S.tableGroups.length) {
+    S.tableGroups[S.tableGroups.length-1].colIds.push(newId);
+  }
+  document.getElementById('admin-new-col').value = '';
+  save(); renderAdminPanel(); renderTable();
+}
+
+function adminDelCol(colId) {
+  if (!confirm('למחוק עמודה זו? הנתונים בה יאבדו.')) return;
+  S.tableColumns = S.tableColumns.filter(c => c.id !== colId);
+  S.tableGroups.forEach(g => { g.colIds = (g.colIds||[]).filter(id => id !== colId); });
+  save(); renderAdminPanel(); renderTable();
+}
+
+function adminMoveCol(idx, dir) {
+  const cols = S.tableColumns;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= cols.length) return;
+  [cols[idx], cols[newIdx]] = [cols[newIdx], cols[idx]];
+  save(); renderAdminPanel(); renderTable();
 }
 
 function adminSaveCols() {
@@ -3435,9 +3545,87 @@ function adminSaveCols() {
     const el = document.getElementById('admin-col-' + col.id);
     if (el && el.value.trim()) col.name = el.value.trim();
   });
+  save(); renderTable();
+  alert('✅ העמודות עודכנו!');
+}
+
+function renderCustomTabs() {
+  const nav = document.querySelector('.bottom-nav');
+  nav.querySelectorAll('.custom-nav-btn').forEach(b => b.remove());
+  (S.customTabs || []).forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn custom-nav-btn';
+    btn.innerHTML = `<span class="icon">\${t.icon}</span><span>\${t.name}</span><span class="nav-pip"></span>`;
+    btn.onclick = () => openCustomTab(t);
+    nav.appendChild(btn);
+  });
+}
+
+function openCustomTab(tab) {
+  // Show a modal with the tab content
+  let modal = document.getElementById('modal-custom-tab');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modal-custom-tab';
+    modal.innerHTML = `<div class="modal" style="max-height:85vh">
+      <div class="modal-title" id="custom-tab-title"></div>
+      <div id="custom-tab-content"></div>
+    </div>`;
+    modal.addEventListener('click', e => { if(e.target===modal) modal.classList.remove('open'); });
+    document.body.appendChild(modal);
+  }
+  document.getElementById('custom-tab-title').innerHTML = tab.icon + ' ' + tab.name + ' <button class="modal-close" onclick="closeModal(\'modal-custom-tab\')">×</button>';
+  
+  if (!S.customTabData) S.customTabData = {};
+  if (!S.customTabData[tab.id]) S.customTabData[tab.id] = [];
+  
+  renderCustomTabContent(tab);
+  modal.classList.add('open');
+}
+
+function renderCustomTabContent(tab) {
+  // This function is replaced by buildCustomTabHTML + renderCustomTabs
+}
+
+function addCustomNote(tabId) {
+  const inp = document.getElementById('custom-note-input-' + tabId);
+  const text = inp.value.trim();
+  if (!text) return;
+  if (!S.customTabData) S.customTabData = {};
+  if (!S.customTabData[tabId]) S.customTabData[tabId] = [];
+  S.customTabData[tabId].unshift({ text, date: new Date().toLocaleDateString('he-IL') });
+  inp.value = '';
   save();
-  renderTable();
-  alert('✅ שמות העמודות עודכנו!');
+  const tab = (S.customTabs||[]).find(t => t.id === tabId);
+  if (tab) renderCustomTabContent(tab);
+}
+
+function addCustomTask(tabId) {
+  const inp = document.getElementById('custom-task-input-' + tabId);
+  const text = inp.value.trim();
+  if (!text) return;
+  if (!S.customTabData) S.customTabData = {};
+  if (!S.customTabData[tabId]) S.customTabData[tabId] = [];
+  S.customTabData[tabId].push({ text, done: false });
+  inp.value = '';
+  save();
+  const tab = (S.customTabs||[]).find(t => t.id === tabId);
+  if (tab) renderCustomTabContent(tab);
+}
+
+function toggleCustomTask(tabId, i) {
+  S.customTabData[tabId][i].done = !S.customTabData[tabId][i].done;
+  save();
+  const tab = (S.customTabs||[]).find(t => t.id === tabId);
+  if (tab) renderCustomTabContent(tab);
+}
+
+function delCustomItem(tabId, i) {
+  S.customTabData[tabId].splice(i, 1);
+  save();
+  const tab = (S.customTabs||[]).find(t => t.id === tabId);
+  if (tab) renderCustomTabContent(tab);
 }
 
 // Apply settings on load
@@ -3447,14 +3635,15 @@ function applyAdminSettingsOnLoad() {
     const logo = document.querySelector('.top-bar .logo');
     if (logo) logo.textContent = S.appName;
   }
+  applyTabNames();
   renderCustomTabs();
 }
 
 // ======= PASSWORD =======
-const CORRECT_PW = '1234';
 function checkPW() {
   const val = document.getElementById('pw-input').value;
-  if (val === CORRECT_PW) {
+  const correct = getUserPW();
+  if (val === correct) {
     sessionStorage.setItem('pw_ok', '1');
     document.getElementById('pw-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
@@ -3465,10 +3654,13 @@ function checkPW() {
     document.getElementById('pw-input').focus();
   }
 }
-// Check if already authenticated this session
+// Check if already authenticated this session - show app if so
 if (sessionStorage.getItem('pw_ok') === '1') {
   document.getElementById('pw-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
+} else {
+  document.getElementById('pw-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
 }
 
 // ======= CSV IMPORT =======
@@ -3552,24 +3744,7 @@ if (window._fbReady && sessionStorage.getItem('pw_ok') === '1') {
   startApp();
 }
 </script>
-<!-- Admin floating button -->
-<style>
-#admin-fab {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 200;
-  background: var(--surf2);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  width: 38px; height: 38px;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-</style>
-<button id="admin-fab" onclick="openAdminLogin()" title="הגדרות מנהל">⚙️</button>
+
 
 <!-- PWA Install -->
 <style>
