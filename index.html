@@ -3282,35 +3282,35 @@ function importCSV(input) {
 }
 
 // ======= INIT =======
-async function startApp() {
+function startApp() {
+  // Start immediately from localStorage
   load();
   loadEngCal();
   ensureClassColors();
   migrateTableColumns();
   renderAll();
   
-  // Load from Firebase in background
-  if (window.fbLoad) {
-    await loadFromFirebase();
-    await loadEngCalFromFirebase();
-    renderAll();
-    
-    // Listen for real-time updates from other users
-    window.fbListen('state', (remote) => {
-      const localStr = JSON.stringify(S);
-      const remoteStr = JSON.stringify(remote);
-      if (localStr !== remoteStr) {
-        S = Object.assign({}, defaultState, remote);
-        try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+  // Load Firebase in background after app is shown
+  setTimeout(async () => {
+    if (window.fbLoad) {
+      try {
+        await loadFromFirebase();
+        await loadEngCalFromFirebase();
         renderAll();
-      }
-    });
-    window.fbListen('engCal', (remote) => {
-      engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, remote);
-      try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
-      if (solMainView === 'calendar') renderEngCalendar();
-    });
-  }
+        // Listen for real-time updates
+        window.fbListen('state', (remote) => {
+          S = Object.assign({}, defaultState, remote);
+          try { localStorage.setItem('mifkad2', JSON.stringify(S)); } catch(e) {}
+          renderAll();
+        });
+        window.fbListen('engCal', (remote) => {
+          engCal = Object.assign({ events:[], year: new Date().getFullYear(), month: new Date().getMonth() }, remote);
+          try { localStorage.setItem(ENG_STORAGE_KEY, JSON.stringify(engCal)); } catch(e) {}
+          if (solMainView === 'calendar') renderEngCalendar();
+        });
+      } catch(e) { console.warn('Firebase background load failed', e); }
+    }
+  }, 500);
 }
 
 // Hide app until password entered (if not already authenticated)
