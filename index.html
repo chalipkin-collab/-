@@ -3230,6 +3230,7 @@ const CORRECT_PW = 'handasa2025';
 function checkPW() {
   const val = document.getElementById('pw-input').value;
   if (val === CORRECT_PW) {
+    sessionStorage.setItem('pw_ok', '1');
     document.getElementById('pw-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     startApp();
@@ -3244,13 +3245,6 @@ if (sessionStorage.getItem('pw_ok') === '1') {
   document.getElementById('pw-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
 }
-// Override checkPW to also store session
-const _origCheckPW = checkPW;
-window.checkPW = function() {
-  const val = document.getElementById('pw-input').value;
-  if (val === CORRECT_PW) sessionStorage.setItem('pw_ok', '1');
-  _origCheckPW();
-};
 
 // ======= CSV IMPORT =======
 function importCSV(input) {
@@ -3319,16 +3313,19 @@ async function startApp() {
   }
 }
 
-// If already authenticated, start immediately
-if (sessionStorage.getItem('pw_ok') === '1') {
-  window._initAppWhenReady = startApp;
-  if (window._fbReady) startApp();
-} else {
-  // Hide app until password entered
+// Hide app until password entered (if not already authenticated)
+if (sessionStorage.getItem('pw_ok') !== '1') {
   document.getElementById('app').style.display = 'none';
-  window._initAppWhenReady = function() {
-    // Will be called after password is entered
-  };
+}
+
+// _initAppWhenReady is called when Firebase module loads
+window._initAppWhenReady = function() {
+  if (sessionStorage.getItem('pw_ok') === '1') {
+    startApp();
+  }
+};
+if (window._fbReady && sessionStorage.getItem('pw_ok') === '1') {
+  startApp();
 }
 </script>
 <!-- PWA Install -->
