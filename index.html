@@ -3226,7 +3226,7 @@ function renderAll() {
 }
 
 // ======= PASSWORD =======
-const CORRECT_PW = 'handasa2025';
+const CORRECT_PW = '1234';
 function checkPW() {
   const val = document.getElementById('pw-input').value;
   if (val === CORRECT_PW) {
@@ -3253,9 +3253,7 @@ function importCSV(input) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const text = e.target.result;
-    const lines = text.split(/
-?
-/).filter(l => l.trim());
+    const lines = text.split('\n').filter(l => l.trim());
     if (lines.length < 2) { alert('הקובץ ריק או לא תקין'); return; }
     
     // Parse headers (skip BOM)
