@@ -16,6 +16,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAASod1n3ztCXCytdpabT4VQ42-nflR_pc",
@@ -55,9 +56,16 @@
     });
   };
 
-  // Init app after Firebase is ready
-  window._fbReady = true;
-  if (window._initAppWhenReady) window._initAppWhenReady();
+  // Sign in anonymously then init app
+  const auth = getAuth(app);
+  signInAnonymously(auth).then(() => {
+    window._fbReady = true;
+    if (window._initAppWhenReady) window._initAppWhenReady();
+  }).catch((e) => {
+    console.warn('Auth failed, running offline', e);
+    window._fbReady = true;
+    if (window._initAppWhenReady) window._initAppWhenReady();
+  });
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;900&display=swap');
@@ -3969,10 +3977,49 @@ window._initAppWhenReady = function() {
 </script>
 
 
-<!-- Service Worker -->
+<!-- PWA Install -->
+<style>
+#pwa-install-btn {
+  display: none;
+  position: fixed;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px);
+  left: 50%; transform: translateX(-50%);
+  z-index: 999;
+  background: linear-gradient(135deg, #4caf50, #8bc34a);
+  color: #fff; border: none; border-radius: 30px;
+  padding: 12px 24px;
+  font-family: 'Heebo', sans-serif; font-size: 15px; font-weight: 700;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(76,175,80,0.4);
+  white-space: nowrap; gap: 8px; align-items: center;
+  animation: pwa-bounce 2s ease-in-out infinite;
+}
+#pwa-install-btn.visible { display: flex; }
+@keyframes pwa-bounce {
+  0%,100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
+}
+</style>
+<button id="pwa-install-btn" onclick="pwaTriggerInstall()">📱 הוסף למסך הבית</button>
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(function(){});
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); _pwaPrompt = e;
+  document.getElementById('pwa-install-btn').classList.add('visible');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('pwa-install-btn').classList.remove('visible');
+  _pwaPrompt = null;
+});
+function pwaTriggerInstall() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(c => {
+    if (c.outcome === 'accepted') document.getElementById('pwa-install-btn').classList.remove('visible');
+    _pwaPrompt = null;
+  });
 }
 </script>
 </body>
