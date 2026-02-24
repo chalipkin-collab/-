@@ -1291,6 +1291,71 @@ textarea { resize: none; min-height: 70px; }
 .gsearch-item-tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--surf3); color: var(--dim); flex-shrink: 0; align-self: center; }
 .gsearch-empty { text-align: center; color: var(--dim); font-size: 14px; padding: 40px 0; }
 mark.gh { background: var(--blue); color: #0a0f06; border-radius: 2px; padding: 0 2px; font-style: normal; }
+
+/* ── AI Chat ── */
+#ai-chat-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85); z-index: 2000;
+  flex-direction: column;
+}
+#ai-chat-overlay.open { display: flex; }
+.ai-chat-header {
+  background: var(--surf); padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.ai-chat-messages {
+  flex: 1; overflow-y: auto; padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ai-msg {
+  max-width: 85%; padding: 10px 14px;
+  border-radius: 14px; font-size: 14px; line-height: 1.5;
+  direction: rtl; text-align: right;
+}
+.ai-msg.user {
+  background: var(--blue); color: #0a0f06;
+  align-self: flex-end; border-bottom-right-radius: 4px;
+}
+.ai-msg.bot {
+  background: var(--surf); color: var(--text);
+  align-self: flex-start; border-bottom-left-radius: 4px;
+  border: 1px solid var(--border);
+}
+.ai-msg.thinking {
+  background: var(--surf2); color: var(--dim);
+  align-self: flex-start; font-style: italic;
+}
+.ai-chat-input-row {
+  background: var(--surf); padding: 10px 12px;
+  display: flex; gap: 8px; align-items: center;
+  border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.ai-chat-input-row input {
+  flex: 1; background: var(--surf2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 9px 14px; color: var(--text);
+  font-family: Heebo, sans-serif; font-size: 14px;
+  outline: none; direction: rtl;
+}
+.ai-chat-input-row input:focus { border-color: var(--blue); }
+.ai-chat-send {
+  background: var(--blue); border: none; border-radius: 50%;
+  width: 38px; height: 38px; font-size: 18px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ai-chat-send:disabled { opacity: 0.4; cursor: default; }
+.ai-quick-btns {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px 14px 0; direction: rtl;
+}
+.ai-quick-btn {
+  background: var(--surf2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 5px 12px; font-size: 12px;
+  color: var(--dim); cursor: pointer; font-family: Heebo, sans-serif;
+  white-space: nowrap;
+}
+.ai-quick-btn:hover { border-color: var(--blue); color: var(--text); }
 </style>
 </head>
 <body>
@@ -1515,6 +1580,17 @@ mark.gh { background: var(--blue); color: #0a0f06; border-radius: 2px; padding: 
     </div>
   </div>
 
+    <div class="card" style="cursor:pointer;margin-top:8px" onclick="openAiChat()">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px">🤖</div>
+        <div>
+          <div style="font-weight:700">עוזר AI</div>
+          <div style="font-size:13px;color:var(--dim)">שאל שאלות על הנתונים שלך</div>
+        </div>
+        <div style="margin-right:auto;color:var(--dim);font-size:20px">‹</div>
+      </div>
+    </div>
+
     <div class="card" style="cursor:pointer;margin-top:8px" onclick="openAdminLogin()">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="font-size:24px">⚙️</div>
@@ -1561,6 +1637,33 @@ mark.gh { background: var(--blue); color: #0a0f06; border-radius: 2px; padding: 
     <button onclick="closeGlobalSearch()" style="background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;padding:0;line-height:1">×</button>
   </div>
   <div id="global-search-results" style="overflow-y:auto;flex:1;padding:10px 14px"></div>
+</div>
+
+<!-- AI CHAT OVERLAY -->
+<div id="ai-chat-overlay">
+  <div class="ai-chat-header">
+    <span style="font-size:22px">🤖</span>
+    <div style="flex:1;direction:rtl">
+      <div style="font-weight:700;font-size:15px;color:var(--text)">עוזר AI</div>
+      <div style="font-size:11px;color:var(--dim)">שואל שאלות על הנתונים שלך</div>
+    </div>
+    <button onclick="closeAiChat()" style="background:none;border:none;color:var(--dim);font-size:24px;cursor:pointer;padding:0;line-height:1">×</button>
+  </div>
+  <div class="ai-quick-btns" id="ai-quick-btns">
+    <button class="ai-quick-btn" onclick="sendAiMsg('כמה משימות פתוחות יש?')">משימות פתוחות</button>
+    <button class="ai-quick-btn" onclick="sendAiMsg('מה האירועים הקרובים?')">אירועים קרובים</button>
+    <button class="ai-quick-btn" onclick="sendAiMsg('תן לי סיכום של מצב הקורסים')">סיכום קורסים</button>
+    <button class="ai-quick-btn" onclick="sendAiMsg('כמה חיילים יש במערכת?')">סטטוס חיילים</button>
+    <button class="ai-quick-btn" onclick="sendAiMsg('מה הדברים הדחופים ביותר שצריך לטפל?')">דחוף לטיפול</button>
+  </div>
+  <div class="ai-chat-messages" id="ai-chat-messages">
+    <div class="ai-msg bot">שלום! אני יכול לענות על שאלות לגבי הנתונים שלך — אירועים, משימות, קורסים וחיילים. מה תרצה לדעת?</div>
+  </div>
+  <div class="ai-chat-input-row">
+    <button class="ai-chat-send" id="ai-send-btn" onclick="sendAiMsg()">➤</button>
+    <input type="text" id="ai-chat-input" placeholder="שאל שאלה על הנתונים שלך..."
+      onkeydown="if(event.key==='Enter')sendAiMsg()">
+  </div>
 </div>
 </div><!-- /app -->
 
@@ -3920,6 +4023,145 @@ function applyAdminSettingsOnLoad() {
   renderCustomTabs();
 }
 
+
+
+// ======= AI CHAT =======
+let aiChatHistory = [];
+
+function openAiChat() {
+  document.getElementById('ai-chat-overlay').classList.add('open');
+  setTimeout(function() {
+    document.getElementById('ai-chat-input').focus();
+  }, 150);
+}
+
+function closeAiChat() {
+  document.getElementById('ai-chat-overlay').classList.remove('open');
+}
+
+function buildDataContext() {
+  const todayStr = today();
+  
+  // Summarize events
+  const events = (S.events || []).map(function(e) {
+    return { date: e.date, title: e.text || e.title, time: e.time || '', note: e.note || '' };
+  }).sort(function(a,b) { return a.date.localeCompare(b.date); });
+  const upcomingEvents = events.filter(function(e) { return e.date >= todayStr; }).slice(0, 20);
+  const pastEvents = events.filter(function(e) { return e.date < todayStr; }).slice(-5);
+
+  // Summarize tasks
+  const tasks = (S.tasks || []).map(function(t) {
+    return { text: t.text, done: t.done, priority: t.pri || '' };
+  });
+  const openTasks = tasks.filter(function(t) { return !t.done; });
+  const doneTasks = tasks.filter(function(t) { return t.done; });
+
+  // Summarize classes/table
+  const cols = (S.tableColumns || []).map(function(c) { return c.name; });
+  const rows = (S.classes || []).slice(0, 30).map(function(c) {
+    const obj = {};
+    cols.forEach(function(col, i) { if (c.data && c.data[i]) obj[col] = c.data[i]; });
+    return obj;
+  });
+
+  // Soldiers
+  const soldiers = (S.soldiers || []).slice(0, 20).map(function(s) {
+    return { name: s.name || s.n || '', role: s.role || '', unit: s.unit || '' };
+  });
+
+  return 'היום: ' + todayStr + '\n\n' +
+    'אירועים קרובים (' + upcomingEvents.length + '): ' + JSON.stringify(upcomingEvents) + '\n\n' +
+    'אירועים אחרונים שעברו: ' + JSON.stringify(pastEvents) + '\n\n' +
+    'משימות פתוחות (' + openTasks.length + '): ' + JSON.stringify(openTasks) + '\n\n' +
+    'משימות שהושלמו: ' + doneTasks.length + '\n\n' +
+    'עמודות טבלה: ' + JSON.stringify(cols) + '\n\n' +
+    'שורות בטבלה (' + rows.length + '): ' + JSON.stringify(rows) + '\n\n' +
+    'חיילים (' + soldiers.length + '): ' + JSON.stringify(soldiers);
+}
+
+function addAiMessage(text, role) {
+  const con = document.getElementById('ai-chat-messages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + role;
+  div.textContent = text;
+  con.appendChild(div);
+  con.scrollTop = con.scrollHeight;
+  return div;
+}
+
+async function sendAiMsg(quickMsg) {
+  const inp = document.getElementById('ai-chat-input');
+  const msg = quickMsg || (inp ? inp.value.trim() : '');
+  if (!msg) return;
+
+  // Hide quick buttons after first message
+  const quickBtns = document.getElementById('ai-quick-btns');
+  if (quickBtns) quickBtns.style.display = 'none';
+
+  // Add user message
+  addAiMessage(msg, 'user');
+  if (inp) inp.value = '';
+
+  // Add to history
+  aiChatHistory.push({ role: 'user', content: msg });
+
+  // Disable send
+  const sendBtn = document.getElementById('ai-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+
+  // Thinking indicator
+  const thinkingDiv = addAiMessage('...', 'thinking');
+
+  try {
+    const dataCtx = buildDataContext();
+    const systemPrompt = 'אתה עוזר AI לאפליקציית ניהול צבאית בעברית. ' +
+      'ענה תמיד בעברית בצורה תמציתית וברורה. ' +
+      'השתמש בנתונים הבאים כדי לענות על שאלות המשתמש.\n\n' +
+      'נתוני האפליקציה:\n' + dataCtx;
+
+    // Build messages with history (last 6 turns)
+    const messages = aiChatHistory.slice(-6);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: messages
+      })
+    });
+
+    const data = await response.json();
+    const reply = (data.content || []).map(function(b) { return b.text || ''; }).join('');
+
+    if (!reply) throw new Error('תשובה ריקה');
+
+    // Add to history
+    aiChatHistory.push({ role: 'assistant', content: reply });
+
+    // Replace thinking with real answer
+    thinkingDiv.className = 'ai-msg bot';
+    thinkingDiv.textContent = reply;
+
+  } catch(e) {
+    thinkingDiv.className = 'ai-msg bot';
+    thinkingDiv.textContent = 'שגיאה: ' + (e.message || 'לא ניתן להתחבר ל-AI. נסה שוב.');
+  }
+
+  if (sendBtn) sendBtn.disabled = false;
+  const con = document.getElementById('ai-chat-messages');
+  if (con) con.scrollTop = con.scrollHeight;
+}
+
+// Close AI chat on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('ai-chat-overlay');
+    if (overlay && overlay.classList.contains('open')) closeAiChat();
+  }
+});
 
 // ======= GLOBAL SEARCH =======
 function openGlobalSearch() {
